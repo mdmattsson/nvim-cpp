@@ -16,6 +16,7 @@ A minimal, fast, and powerful Neovim configuration optimized for C++/CMake devel
 - [Configuration Structure](#configuration-structure)
 - [Keybindings](#keybindings)
 - [Usage Examples](#usage-examples)
+- [Settings Window](#settings-window)
 - [Code Formatting](#code-formatting)
 - [Project Root Detection](#project-root-detection)
 - [Troubleshooting](#troubleshooting)
@@ -52,9 +53,10 @@ nvim
 **First Steps After Installation**:
 1. Open a C++ file: `nvim main.cpp`
 2. Press `<Space>` - explore available commands
-3. Try `<leader>ff` - fuzzy find files
-4. Try `gcc` - toggle comment on current line
-5. Try `<leader>bc` - configure CMake
+3. Try `<Space>S` - open the unified Settings window
+4. Try `<leader>ff` - fuzzy find files
+5. Try `gcc` - toggle comment on current line
+6. Try `<leader>bc` - configure CMake
 
 **[→ Skip to detailed installation](#installation)**
 
@@ -65,6 +67,7 @@ nvim
 ### Core Features
 - **Native Package Management**: Uses Neovim 0.12's built-in `vim.pack.add()` - no external plugin managers needed
 - **Built-in LSP**: Native Language Server Protocol support with autocompletion
+- **Unified Settings Window**: Single interface for colorschemes, LSP management, and configuration
 - **Modern Code Folding**: Beautiful, treesitter-based folding with nvim-ufo
 - **Quick File Marks**: Lightning-fast navigation using Vim's built-in marks system
 - **Treesitter Syntax Highlighting**: Advanced syntax highlighting and code understanding
@@ -79,6 +82,7 @@ nvim
 - **Active Window Highlighting**: Inactive windows are dimmed for easy visual identification
 - **Project Root Detection**: Intelligent detection of project root for nested CMake projects
 - **Code Formatting**: Configurable auto-format on save with clang-format integration
+- **Live Colorscheme Preview**: See themes in real-time before applying
 
 ### Language Support
 - **C/C++**: Full LSP support with clangd (completion, go-to-definition, diagnostics)
@@ -87,6 +91,8 @@ nvim
 - **Lua**: LSP support for Neovim configuration
 - **JavaScript/TypeScript**: LSP support for web development
 - **HTML/CSS**: LSP support for markup and styling
+- **Rust**: LSP support (configurable)
+- **Easy to extend**: Simple language configuration system
 
 ### Developer Tools
 - **Auto-completion**: Intelligent code completion with auto-trigger
@@ -99,9 +105,9 @@ nvim
 - **Auto-pairs**: Automatic bracket and quote closing
 - **Project Root Detection**: Automatically changes to project root (works with nested projects)
 - **Session Management**: Save and restore editing sessions
-- **Colorscheme Picker**: Live preview and persistent colorscheme selection
 - **Persistent Breakpoints**: Debug breakpoints saved per-project
 - **Multiple Terminal Modes**: Run in split, fullscreen, floating, external, or tmux terminals with auto-close on exit
+- **LSP Toggle**: Enable/disable language servers per session with live restart
 
 ---
 
@@ -201,6 +207,7 @@ On first launch, Neovim will automatically download all plugins. Wait for the pr
 - ✅ **No plugin manager** - Direct use of `vim.pack.add()`
 - ✅ **Unified keymap system** - One function (`map()`) for all keybindings
 - ✅ **Project-aware** - Intelligent root detection for nested projects
+- ✅ **Unified Settings** - Single window for all configuration options
 
 ---
 
@@ -224,6 +231,22 @@ On first launch, Neovim will automatically download all plugins. Wait for the pr
 | `<leader>o` | Save and reload config |
 | `<Esc>` | Clear search highlighting |
 
+### Settings (`<leader>S`)
+| Keybinding | Description |
+|------------|-------------|
+| `<leader>S` | **Open Settings window** |
+
+**Inside Settings Window**:
+- `j/k` or `↑/↓` - Navigate options
+- `Enter` or `Space` - Select/Toggle option
+- `q` or `Esc` - Back/Close
+- `r` - Restart LSPs (in LSP view)
+
+**Settings Options**:
+- **Colorscheme** - Live preview and apply themes
+- **LSP Servers** - Toggle language servers on/off
+- **Auto-format** - Toggle auto-formatting on save
+
 ### Build & CMake (`<leader>b`)
 | Keybinding | Description |
 |------------|-------------|
@@ -239,6 +262,13 @@ On first launch, Neovim will automatically download all plugins. Wait for the pr
 ### Debugging (`<leader>d`)
 | Keybinding | Description |
 |------------|-------------|
+| `<F5>` | **Start/Continue** debugging |
+| `<F9>` | Toggle **breakpoint** |
+| `<F10>` | Step over (**next** line) |
+| `<Shift-F10>` | **Step into** function |
+| `<Shift-F11>` | Step out (**finish** function) |
+| `<F6>` | **Restart** debugging |
+| `<F8>` | **Stop** debugging |
 | `<leader>dd` | **Start/Continue** debugging |
 | `<leader>db` | Toggle **breakpoint** |
 | `<leader>dB` | Clear all breakpoints |
@@ -252,6 +282,7 @@ On first launch, Neovim will automatically download all plugins. Wait for the pr
 | `<leader>dl` | **List** all breakpoints |
 | `<leader>dh` | **Hover**/evaluate expression |
 | `<leader>dR` | Open **REPL** |
+| `<leader>dX` | Delete persisted breakpoints file |
 
 ### LSP (Code Intelligence)
 | Keybinding | Description |
@@ -287,20 +318,20 @@ On first launch, Neovim will automatically download all plugins. Wait for the pr
 | `<leader>fo` | Find old files (recent) |
 | `<leader>fl` | Find lines in current buffer |
 | `<leader>fh` | Find help |
-| `<leader>fc` | Find colorscheme (with live preview!) |
 
-### Harpoon (Quick File Navigation) (`<leader>h`)
+### Marks (Quick File Navigation) (`<leader>h`)
 | Keybinding | Description |
 |------------|-------------|
-| `<leader>ha` | **Add** file to Harpoon |
-| `<leader>hh` | **Toggle** Harpoon menu |
-| `<leader>h1` | Jump to Harpoon file **1** |
-| `<leader>h2` | Jump to Harpoon file **2** |
-| `<leader>h3` | Jump to Harpoon file **3** |
-| `<leader>h4` | Jump to Harpoon file **4** |
-| `<leader>h5` | Jump to Harpoon file **5** |
-| `<leader>hp` | Jump to **previous** file |
-| `<leader>hn` | Jump to **next** file |
+| `<leader>h1` | **Set** mark 1 |
+| `<leader>h2` | **Set** mark 2 |
+| `<leader>h3` | **Set** mark 3 |
+| `<leader>h4` | **Set** mark 4 |
+| `<leader>h5` | **Set** mark 5 |
+| `<leader>1` | Jump to mark **1** |
+| `<leader>2` | Jump to mark **2** |
+| `<leader>3` | Jump to mark **3** |
+| `<leader>4` | Jump to mark **4** |
+| `<leader>5` | Jump to mark **5** |
 
 ### Code Folding (nvim-ufo)
 | Keybinding | Description |
@@ -392,7 +423,6 @@ On first launch, Neovim will automatically download all plugins. Wait for the pr
 | `<C-o>` | Jump back |
 | `<C-i>` | Jump forward |
 
-
 ---
 
 ## Usage Examples
@@ -465,26 +495,60 @@ Neovim will:
 - Use `big_project/build/` for all build operations
 - All commands work correctly!
 
-### Harpoon Workflow
+### Using the Settings Window
 
-Mark your most important files:
+Access all configuration in one place:
+
 ```vim
-" Main implementation
-:e src/tcp_handler.cpp
-<leader>ha    " Add to Harpoon (slot 1)
+<leader>S    " Open Settings window
+```
 
-" Header
-:e src/tcp_handler.h
-<leader>ha    " Add to Harpoon (slot 2)
+**Navigate the menu**:
+- Use `j/k` or arrow keys to move
+- Press `Enter` or `Space` to select
 
-" Tests
-:e tests/test_tcp.cpp
-<leader>ha    " Add to Harpoon (slot 3)
+**Change colorscheme with live preview**:
+```vim
+<leader>S              " Open Settings
+" Select 'Colorscheme'
+" Navigate with j/k - see live preview!
+" Press Enter to apply and save
+" Press Esc to cancel
+```
+
+**Toggle LSP servers**:
+```vim
+<leader>S              " Open Settings
+" Select 'LSP Servers'
+" Use Space or Enter to toggle servers
+" Press 'r' to restart all LSPs
+" Press 'q' to go back
+```
+
+**Toggle auto-format**:
+```vim
+<leader>S              " Open Settings
+" Select 'Auto-format'
+" Toggles immediately
+```
+
+### Marks Workflow
+
+Mark your most important locations:
+```vim
+" In main.cpp
+<leader>h1    " Set mark 1
+
+" In header.h
+<leader>h2    " Set mark 2
+
+" In tests.cpp
+<leader>h3    " Set mark 3
 
 " Now jump instantly:
-<leader>h1    " → tcp_handler.cpp
-<leader>h2    " → tcp_handler.h
-<leader>h3    " → test_tcp.cpp
+<leader>1     " → main.cpp
+<leader>2     " → header.h
+<leader>3     " → tests.cpp
 ```
 
 ### Code Folding Workflow
@@ -522,7 +586,7 @@ PointerAlignment: Left
 EOF
 ```
 
-Now your code auto-formats on save! Toggle with `<leader>lF`.
+Now your code auto-formats on save! Toggle with `<leader>lF` or in Settings (`<leader>S`).
 
 ### Debugging Workflow
 
@@ -537,24 +601,24 @@ F9 or <leader>db    " Toggle breakpoint (shows 🔴)
 
 2. **Start debugging**:
 ```vim
-<leader>dd          " Start debugging
+F5 or <leader>dd    " Start debugging
 " DAP UI opens automatically
 " Execution stops at breakpoint
 ```
 
 3. **Debug commands**:
 ```vim
-<leader>dn          " Step over (next line)
-<leader>ds          " Step into function
-<leader>df          " Step out of function
-<leader>dc          " Continue to next breakpoint
-<leader>dq          " Stop debugging
+F10 or <leader>dn   " Step over (next line)
+S-F10 or <leader>ds " Step into function
+S-F11 or <leader>df " Step out of function
+F5 or <leader>dc    " Continue to next breakpoint
+F8 or <leader>dq    " Stop debugging
 ```
 
 4. **Breakpoint persistence**:
 - Breakpoints automatically save on exit
 - Restored when you reopen the project
-- Stored in `.nvim/dap.json` (add to `.gitignore`)
+- Stored in `.nvim/breakpoints.json` (add to `.gitignore`)
 
 ### Session Management
 
@@ -579,10 +643,60 @@ nvim
 <Space>b         " See all Build commands
 <Space>d         " See all Debug commands
 <Space>f         " See all Find commands
-<Space>h         " See all Harpoon commands
+<Space>h         " See all Marks commands
+<Space>S         " Open Settings window
 ```
 
 Which-key shows descriptions for every command!
+
+---
+
+## Settings Window
+
+The unified Settings window (`<leader>S`) provides a single interface for all configuration options.
+
+### Features
+
+**Live Colorscheme Preview**:
+- Navigate through themes with `j/k`
+- See changes in real-time
+- Press `Enter` to save
+- Press `Esc` to cancel
+
+**LSP Server Management**:
+- Toggle individual language servers
+- See installation status
+- Restart all servers with `r`
+- Changes persist across sessions
+
+**Auto-format Control**:
+- Toggle formatting on save
+- Instant feedback
+- Per-session setting
+
+### Navigation
+
+| Key | Action |
+|-----|--------|
+| `j/k` or `↑/↓` | Navigate options |
+| `Enter` or `Space` | Select/Toggle |
+| `q` | Back to previous menu |
+| `Esc` | Cancel and return |
+| `r` | Restart LSPs (in LSP view) |
+
+### Adding New Settings
+
+The Settings window is designed to be easily extensible. To add a new setting, edit the `settings_items` table in `init.lua`:
+
+```lua
+{
+    name = "Your Setting Name",
+    desc = "Description of what it does",
+    action = function()
+        -- Your setting logic here
+    end
+}
+```
 
 ---
 
@@ -593,7 +707,7 @@ Which-key shows descriptions for every command!
 The config includes smart auto-formatting powered by **clang-format**:
 - ✅ Formats C/C++ files on save
 - ✅ Only if `.clang-format` exists in project root
-- ✅ Can be toggled with `<leader>lF`
+- ✅ Can be toggled with `<leader>lF` or Settings window
 - ✅ Manual format with `<leader>lf`
 
 ### Quick Setup
@@ -625,7 +739,7 @@ BreakBeforeBraces: Attach
 
 | Action | Command |
 |--------|---------|
-| Toggle auto-format | `<leader>lF` |
+| Toggle auto-format | `<leader>lF` or Settings window |
 | Format file manually | `<leader>lf` |
 | Format selection | Visual mode + `<leader>lf` |
 
@@ -710,11 +824,14 @@ Check LSP status in Neovim (in a C++ file):
 :lua print(vim.inspect(vim.lsp.get_clients()))
 ```
 
+You can also check and toggle LSP servers in the Settings window (`<leader>S`).
+
 ### No Autocompletion
 
 1. Make sure you're in a C++ file (`.cpp`, `.h`)
 2. Check if LSP attached: Look for "LSP attached: clangd" message
-3. Try manual completion: `<C-x><C-o>`
+3. Open Settings (`<leader>S`) and verify clangd is enabled
+4. Try manual completion: `<C-x><C-o>`
 
 ### Clangd Can't Find Headers
 
@@ -731,6 +848,8 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
+Check if it's enabled in Settings (`<leader>S`).
+
 ### Build Directory Issues
 
 If you have multiple `build/` directories:
@@ -738,11 +857,18 @@ If you have multiple `build/` directories:
 2. Reopen Neovim
 3. Run `<leader>bc` to create a single `build/` at project root
 
-### Harpoon Marks Not Saving
+### Colorscheme Not Persisting
 
-Harpoon saves marks per-project automatically. Make sure:
-- You're in a project directory
-- The project has a `.git` or `CMakeLists.txt`
+The colorscheme should persist automatically when selected through the Settings window. If not:
+
+1. Check if the file exists:
+```vim
+:echo readfile(stdpath('data') . '/current_colorscheme.txt')
+```
+
+2. Make sure you pressed `Enter` to save (not just `Esc`)
+
+3. Try selecting again through Settings window (`<leader>S`)
 
 ### Folding Not Working
 
@@ -770,6 +896,8 @@ If missing, create one:
 echo "BasedOnStyle: LLVM" > .clang-format
 ```
 
+Toggle auto-format in Settings (`<leader>S`) or with `<leader>lF`.
+
 ### Plugin Errors
 
 Reinstall plugins:
@@ -791,6 +919,7 @@ This configuration is built on modern Neovim features:
 - **Native LSP**: `vim.lsp.enable()` and `vim.lsp.start()` (Neovim 0.12+)
 - **Unified keymap system**: Single `map()` function for keybindings + which-key
 - **Project-aware**: Intelligent root detection for nested CMake projects
+- **Unified Settings**: Single window interface for all configuration
 
 **Key Features**:
 - ✅ Single-file config (everything in `init.lua`)
@@ -798,6 +927,7 @@ This configuration is built on modern Neovim features:
 - ✅ No external plugin manager needed
 - ✅ Smart caching (remembers your choices)
 - ✅ Which-key integration for discoverability
+- ✅ Live preview for settings changes
 
 ---
 
@@ -810,7 +940,6 @@ This configuration is built on modern Neovim features:
 - **neo-tree.nvim** - Git-aware file tree
 - **yazi.nvim** - Terminal file manager integration
 - **mini.pick** - Fuzzy finder
-- **harpoon** - Quick file navigation
 
 ### UI & Appearance
 - **mini.statusline** - Minimal statusline
@@ -840,6 +969,7 @@ This configuration is built on modern Neovim features:
 - **nvim-dap** - Debug Adapter Protocol
 - **nvim-dap-ui** - Debug UI
 - **nvim-dap-projects** - Project-specific debug configs
+- **nvim-nio** - Async I/O for DAP
 
 ### Session Management
 - **auto-session** - Automatic session save/restore
@@ -876,7 +1006,6 @@ Add these to your project's `.gitignore`:
 - Yazi team for the blazing-fast file manager
 - Which-key team for the beautiful menu system
 - Lazygit team for the excellent git TUI
-- Harpoon team for lightning-fast navigation
 - nvim-ufo team for modern folding
 
 ---
@@ -903,4 +1032,4 @@ This configuration is provided as-is under the MIT License. Feel free to use, mo
 
 ---
 
-**💡 Final Reminder**: Press `<Space>` in Neovim to discover all available commands with which-key! 🚀
+**💡 Final Reminder**: Press `<Space>` in Neovim to discover all available commands with which-key, or press `<Space>S` to open the unified Settings window! 🚀

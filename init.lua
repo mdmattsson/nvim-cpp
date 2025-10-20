@@ -6,7 +6,7 @@
 -- ============================================================================
 
 -- First run: Checks if LSPs are installed
--- LSPs missing: Shows dialog with 3 options:
+-- LSPs missing: Shows dialog with 3 options:ap('n', '<leader>lm', ':Mason<C
 -- 
 -- Run install_lsp.sh (recommended)
 -- Enable Mason (creates marker file)
@@ -30,6 +30,109 @@ vim.g.mapleader = " "
 -- }}}
 
 
+
+-- ============================================================================
+-- LANGUAGE CONFIGURATION {{{
+-- ============================================================================
+-- Add new languages here - this is the ONLY place you need to edit!
+-- Each entry configures LSP, Treesitter, and file associations automatically.
+
+_G.supported_languages = {
+    {
+        name = "C/C++",
+        lsp = {
+            name = "clangd",
+            cmd = {"clangd", "--background-index", "--clang-tidy", "--header-insertion=iwyu", "--completion-style=detailed", "--function-arg-placeholders", "--pch-storage=memory"},
+            filetypes = {"c", "cpp", "objc", "objcpp"},
+        },
+        treesitter = {"c", "cpp"},
+        format_tool = ".clang-format",  -- Optional
+    },
+    {
+        name = "Rust",
+        lsp = {
+            name = "rust_analyzer",
+            cmd = {"rust-analyzer"},
+            filetypes = {"rs"},
+        },
+        treesitter = {"rust"},
+    },    
+    {
+        name = "Lua",
+        lsp = {
+            name = "lua_ls",
+            cmd = {"lua-language-server"},
+            filetypes = {"lua"},
+        },
+        treesitter = {"lua"},
+    },
+    {
+        name = "Bash",
+        lsp = {
+            name = "bashls",
+            cmd = {"bash-language-server", "start"},
+            filetypes = {"sh", "bash"},
+        },
+        treesitter = {"bash"},
+    },
+    {
+        name = "JavaScript/TypeScript",
+        lsp = {
+            name = "ts_ls",
+            cmd = {"typescript-language-server", "--stdio"},
+            filetypes = {"javascript", "typescript", "javascriptreact", "typescriptreact"},
+        },
+        treesitter = {"javascript", "typescript"},
+    },
+    {
+        name = "HTML",
+        lsp = {
+            name = "html",
+            cmd = {"vscode-html-language-server", "--stdio"},
+            filetypes = {"html"},
+        },
+        treesitter = {"html"},
+    },
+    {
+        name = "CSS",
+        lsp = {
+            name = "cssls",
+            cmd = {"vscode-css-language-server", "--stdio"},
+            filetypes = {"css", "scss", "less"},
+        },
+        treesitter = {"css"},
+    },
+    {
+        name = "CMake",
+        lsp = {
+            name = "cmake",
+            cmd = {"cmake-language-server"},
+            filetypes = {"cmake"},
+        },
+        treesitter = {"cmake"},
+    },
+    
+    -- ============================================================
+    -- ADD NEW LANGUAGES HERE - Example for Rust:
+    -- ============================================================
+    -- {
+    --     name = "Rust",
+    --     lsp = {
+    --         name = "rust_analyzer",
+    --         cmd = {"rust-analyzer"},
+    --         filetypes = {"rust"},
+    --     },
+    --     treesitter = {"rust"},
+    -- },
+    -- ============================================================
+}
+
+-- }}}
+
+
+
+
+
 -- ============================================================================
 -- FIRST RUN SETUP {{{
 -- ============================================================================
@@ -43,13 +146,15 @@ if vim.fn.filereadable(first_run_marker) == 0 then
     vim.notify("First run detected - checking LSP installation...", vim.log.levels.INFO)
     
     -- Check if LSPs are installed
-    local lsps_to_check = {
-        {name = 'clangd', cmd = 'clangd'},
-        {name = 'lua-language-server', cmd = 'lua-language-server'},
-        {name = 'bash-language-server', cmd = 'bash-language-server'},
-        {name = 'typescript-language-server', cmd = 'typescript-language-server'},
-        {name = 'cmake-language-server', cmd = 'cmake-language-server'},
-    }
+    local lsps_to_check = {}
+    for _, lang in ipairs(_G.supported_languages) do
+        if lang.lsp then
+            table.insert(lsps_to_check, {
+                name = lang.lsp.name,
+                cmd = lang.lsp.cmd[1]
+            })
+        end
+    end
     
     local missing = {}
     for _, lsp in ipairs(lsps_to_check) do
@@ -782,463 +887,6 @@ end
 
 -- }}}
 
--- ============================================================================
--- KEYBINDINGS {{{
--- ============================================================================
-
--- Basic {{{
-map('n', '<leader>w', ':write<CR>', 'Save file')
-map('n', '<leader>W', ':wa<CR>', 'Save all files')
-map('n', '<leader>q', ':quit<CR>', 'Quit window')
-map('n', '<leader>Q', ':qa<CR>', 'Quit all')
-map('n', '<leader>o', ':update<CR> :source<CR>', 'Reload config')
-map('n', '<Esc>', ':nohlsearch<CR>', 'Clear highlight', {silent = true})
-map('n', '<leader>x', ':xa<CR>', 'Save all and quit')
--- }}}
-
--- Windows {{{
-map('n', '<C-h>', '<C-w>h', 'Left split')
-map('n', '<C-j>', '<C-w>j', 'Bottom split')
-map('n', '<C-k>', '<C-w>k', 'Top split')
-map('n', '<C-l>', '<C-w>l', 'Right split')
-
-map('n', '<C-Left>', '<C-w>h', 'Left split')
-map('n', '<C-Right>', '<C-w>l', 'Right split')
-map('n', '<C-Up>', '<C-w>k', 'Top split')
-map('n', '<C-Down>', '<C-w>j', 'Bottom split')
-
-map_group('<leader>w', 'Windows/Save')
-map('n', '<C-M-Left>', ':leftabove vsplit<CR>', 'Split left', {silent = true})
-map('n', '<C-M-Right>', ':rightbelow vsplit<CR>', 'Split right', {silent = true})
-map('n', '<C-M-Up>', ':leftabove split<CR>', 'Split above', {silent = true})
-map('n', '<C-M-Down>', ':rightbelow split<CR>', 'Split below', {silent = true})
-
-map('n', '<leader>wh', ':leftabove vsplit<CR>', 'Split left', {silent = true})
-map('n', '<leader>wl', ':rightbelow vsplit<CR>', 'Split right', {silent = true})
-map('n', '<leader>wk', ':leftabove split<CR>', 'Split above', {silent = true})
-map('n', '<leader>wj', ':rightbelow split<CR>', 'Split below', {silent = true})
--- }}}
-
--- Buffers {{{
-map('n', '<Tab>', ':bnext<CR>', 'Next buffer')
-map('n', '<S-Tab>', ':bprevious<CR>', 'Previous buffer')
-map('n', '<leader>bd', ':bdelete<CR>', 'Delete buffer')
-map('n', '<leader>bn', ':bnext<CR>', 'Next buffer')
-map('n', '<leader>bp', ':bprevious<CR>', 'Previous buffer')
--- }}}
-
--- Jump List {{{
-map('n', '<C-o>', '<C-o>', 'Jump back')
-map('n', '<C-i>', '<C-i>', 'Jump forward')
--- }}}
-
--- Paste/Yank {{{
-map('x', 'p', '"_dP', 'Paste without yanking')
-map('v', 'y', 'ygv<Esc>', 'Yank and restore cursor')
--- }}}
-
--- LSP {{{
-map_group('<leader>l', 'LSP')
-map('n', 'gd', vim.lsp.buf.definition, 'Go to definition')
-map('n', 'gD', vim.lsp.buf.declaration, 'Go to declaration')
-map('n', 'gr', vim.lsp.buf.references, 'Go to references')
-map('n', 'gi', vim.lsp.buf.implementation, 'Go to implementation')
-map('n', 'K', vim.lsp.buf.hover, 'Hover documentation')
-map('n', '<leader>rn', vim.lsp.buf.rename, 'Rename symbol')
-map('n', '<leader>ca', vim.lsp.buf.code_action, 'Code actions')
-map('n', '<leader>lf', vim.lsp.buf.format, 'Format code')
-map('v', '<leader>lf', vim.lsp.buf.format, 'Format selection')
-
-_G.autoformat_enabled = true
-map('n', '<leader>lF', function()
-    _G.autoformat_enabled = not _G.autoformat_enabled
-    vim.notify("Auto-format: " .. (_G.autoformat_enabled and "ON" or "OFF"),
-               _G.autoformat_enabled and vim.log.levels.INFO or vim.log.levels.WARN)
-end, 'Toggle auto-format')
--- }}}
-
--- Diagnostics {{{
-map_group('<leader>e', 'Errors/Diagnostics')
-map('n', '[d', vim.diagnostic.goto_prev, 'Previous diagnostic')
-map('n', ']d', vim.diagnostic.goto_next, 'Next diagnostic')
-map('n', '[e', function()
-    vim.diagnostic.goto_prev({severity = vim.diagnostic.severity.ERROR})
-end, 'Previous error')
-map('n', ']e', function()
-    vim.diagnostic.goto_next({severity = vim.diagnostic.severity.ERROR})
-end, 'Next error')
-map('n', '<leader>e', vim.diagnostic.open_float, 'Show diagnostic')
-map('n', '<leader>el', vim.diagnostic.setloclist, 'Error list (buffer)')
-map('n', '<leader>ew', vim.diagnostic.setqflist, 'Error list (workspace)')
--- }}}
-
--- File Explorers {{{
-map('n', '-', '<CMD>Oil<CR>', 'Oil')
-map('n', '<leader>n', '<CMD>Neotree toggle<CR>', 'NeoTree')
-map('n', '<leader>y', '<CMD>Yazi<CR>', 'Yazi')
-map('n', '<leader>Y', '<CMD>Yazi cwd<CR>', 'Yazi (cwd)')
--- }}}
-
--- Marks {{{
-map_group('<leader>h', 'Marks')
-map('n', '<leader>h1', "m1", 'Set mark 1')
-map('n', '<leader>h2', "m2", 'Set mark 2')
-map('n', '<leader>h3', "m3", 'Set mark 3')
-map('n', '<leader>h4', "m4", 'Set mark 4')
-map('n', '<leader>h5', "m5", 'Set mark 5')
-
-map('n', '<leader>1', "'1", 'Jump to mark 1')
-map('n', '<leader>2', "'2", 'Jump to mark 2')
-map('n', '<leader>3', "'3", 'Jump to mark 3')
-map('n', '<leader>4', "'4", 'Jump to mark 4')
-map('n', '<leader>5', "'5", 'Jump to mark 5')
--- }}}
-
--- Folding {{{
-map('n', 'zR', function() require('ufo').openAllFolds() end, 'Open all folds')
-map('n', 'zM', function() require('ufo').closeAllFolds() end, 'Close all folds')
-map('n', 'zr', function() require('ufo').openFoldsExceptKinds() end, 'Open folds except kinds')
-map('n', 'zm', function() require('ufo').closeFoldsWith() end, 'Close folds with')
-map('n', 'zK', function()
-    local winid = require('ufo').peekFoldedLinesUnderCursor()
-    if not winid then vim.lsp.buf.hover() end
-end, 'Peek fold')
--- }}}
-
--- Find {{{
-map_group('<leader>f', 'Find')
-map('n', '<leader>ff', '<CMD>Pick files<CR>', 'Files')
-map('n', '<leader>fg', '<CMD>Pick grep_live<CR>', 'Grep')
-map('n', '<leader>fw', function()
-    require('mini.pick').builtin.grep_live({ pattern = vim.fn.expand('<cword>') })
-end, 'Word under cursor')
-map('n', '<leader>fb', '<CMD>Pick buffers<CR>', 'Buffers')
-map('n', '<leader>fo', '<CMD>Pick oldfiles<CR>', 'Recent files')
-map('n', '<leader>fl', '<CMD>Pick buf_lines<CR>', 'Lines')
-map('n', '<leader>fh', '<CMD>Pick help<CR>', 'Help')
--- }}}
-
--- Sessions {{{
-map_group('<leader>s', 'Session')
-map('n', '<leader>sd', ':SessionDelete<CR>', 'Delete')
-map('n', '<leader>sf', ':Autosession search<CR>', 'Find')
-map('n', '<leader>ss', ':mksession! .session.vim<CR>', 'Save')
-map('n', '<leader>sl', ':source .session.vim<CR>', 'Load')
--- }}}
-
--- C++ {{{
-map('n', '<leader>a', function()
-    local ext = vim.fn.expand('%:e')
-    local base = vim.fn.expand('%:r')
-    if ext == 'cpp' or ext == 'cc' or ext == 'c' then
-        vim.cmd('edit ' .. base .. '.h')
-    elseif ext == 'h' or ext == 'hpp' then
-        for _, source_ext in ipairs({'cpp', 'cc', 'c'}) do
-            if vim.fn.filereadable(base .. '.' .. source_ext) == 1 then
-                vim.cmd('edit ' .. base .. '.' .. source_ext)
-                return
-            end
-        end
-    end
-end, 'Toggle header/source')
--- }}}
-
--- Build {{{
-map_group('<leader>b', 'Build')
-
-map('n', '<leader>bp', function()
-    local root = find_project_root()
-    vim.notify("Project root: " .. root .. (root == vim.fn.getcwd() and " (current)" or ""), vim.log.levels.INFO)
-end, 'Show project root')
-
-map('n', '<leader>bP', cd_to_project_root, 'CD to project root')
-
-map('n', '<leader>bc', function()
-    local root = cd_to_project_root()
-    local build_dir = ensure_build_dir()
-    
-    if vim.fn.filereadable(root .. '/CMakeLists.txt') == 0 then
-        vim.notify("CMakeLists.txt not found", vim.log.levels.ERROR)
-        return
-    end
-    
-    vim.cmd('!cmake -B ' .. vim.fn.shellescape(build_dir) .. ' -S ' .. vim.fn.shellescape(root) .. ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON')
-end, 'Configure CMake')
-
-map('n', '<leader>bb', function()
-    local root = cd_to_project_root()
-    local build_dir = ensure_build_dir()
-    
-    if vim.fn.filereadable(root .. '/CMakeLists.txt') == 0 then
-        vim.notify("CMakeLists.txt not found", vim.log.levels.ERROR)
-        return
-    end
-    
-    if vim.fn.filereadable(build_dir .. '/CMakeCache.txt') == 0 then
-        vim.notify("Build not configured. Run <leader>bc first.", vim.log.levels.WARN)
-        return
-    end
-    
-    vim.cmd('!cmake --build ' .. vim.fn.shellescape(build_dir))
-end, 'Build project')
-
-map('n', '<leader>br', _G.cmake_run_with_picker, 'Build & Run')
-
-map('n', '<leader>bt', function()
-    cd_to_project_root()
-    local build_dir = ensure_build_dir()
-    
-    if vim.fn.filereadable(build_dir .. '/CMakeCache.txt') == 0 then
-        vim.notify("Build not configured.", vim.log.levels.WARN)
-        return
-    end
-    
-    vim.cmd('!ctest --test-dir ' .. vim.fn.shellescape(build_dir))
-end, 'Run tests')
-
-map('n', '<leader>m', ':make<CR>', 'Make')
-map('n', '<leader>cs', function()
-    _G.last_cmake_target = nil
-    print("Target cache cleared.")
-end, 'Clear cached target')
-map('t', '<C-q>', '<C-\\><C-n>:q<CR>', 'Close terminal')
--- }}}
-
--- Git {{{
-map_group('<leader>g', 'Git')
-map('n', '<leader>gg', function()
-    if vim.fn.executable('lazygit') == 0 then
-        vim.notify('lazygit not installed', vim.log.levels.ERROR)
-        return
-    end
-    
-    if vim.bo.modified then vim.cmd('write') end
-    
-    local buf = vim.api.nvim_create_buf(false, true)
-    local width = math.floor(vim.o.columns * 0.95)
-    local height = math.floor(vim.o.lines * 0.95)
-    
-    local win = vim.api.nvim_open_win(buf, true, {
-        relative = 'editor',
-        width = width,
-        height = height,
-        row = math.floor((vim.o.lines - height) / 2),
-        col = math.floor((vim.o.columns - width) / 2),
-        style = 'minimal',
-        border = 'rounded',
-    })
-    
-    vim.bo[buf].buflisted = false
-    vim.bo[buf].bufhidden = 'wipe'
-    
-    vim.fn.termopen('lazygit', {
-        on_exit = function()
-            if vim.api.nvim_win_is_valid(win) then
-                vim.api.nvim_win_close(win, true)
-            end
-            vim.cmd('checktime')
-        end,
-    })
-    
-    vim.cmd('startinsert')
-    vim.keymap.set('t', 'q', function()
-        vim.api.nvim_win_close(win, true)
-    end, { buffer = buf })
-end, 'Lazygit (floating)')
-
-map('n', '<leader>gG', function()
-    if vim.fn.executable('lazygit') == 0 then
-        vim.notify('lazygit not installed', vim.log.levels.ERROR)
-        return
-    end
-    
-    vim.cmd('tabnew')
-    vim.fn.termopen('lazygit', {
-        on_exit = function()
-            vim.cmd('tabclose')
-            vim.cmd('checktime')
-        end,
-    })
-    vim.cmd('startinsert')
-end, 'Lazygit (tab)')
-
-map('n', ']c', ':Gitsigns next_hunk<CR>', 'Next hunk')
-map('n', '[c', ':Gitsigns prev_hunk<CR>', 'Previous hunk')
-map('n', '<leader>gp', ':Gitsigns preview_hunk<CR>', 'Preview hunk')
-map('n', '<leader>gb', ':Gitsigns blame_line<CR>', 'Blame')
--- }}}
-
--- Quickfix {{{
-map_group('<leader>c', 'CMake/Quickfix')
-map('n', '<leader>co', ':copen<CR>', 'Open quickfix')
-map('n', '<leader>cc', ':cclose<CR>', 'Close quickfix')
-map('n', '[q', ':cprev<CR>', 'Previous')
-map('n', ']q', ':cnext<CR>', 'Next')
--- }}}
-
--- Debug {{{
-map_group('<leader>d', 'Debug')
-
-map('n', '<leader>dd', function() require('dap').continue() end, 'Debug (DAP)')
-map('n', '<leader>dD', function() require('dap').continue() end, 'Debug (console)')
-map('n', '<leader>dg', _G.debug_in_terminal, 'Debug (GDB)')
-
-map('n', '<leader>db', function()
-    require('dap').toggle_breakpoint()
-    -- Refresh DAP UI if it's open
-    pcall(function() require('dapui').update_render() end)
-end, 'Toggle breakpoint')
-
-map('n', '<F9>', function()
-    require('dap').toggle_breakpoint()
-    -- Refresh DAP UI if it's open
-    pcall(function() require('dapui').update_render() end)
-end, 'Toggle breakpoint')
-
-map('n', '<F5>', function() 
-    if vim.bo.filetype == 'neo-tree' or vim.bo.buftype ~= '' then
-        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-            if vim.api.nvim_buf_is_loaded(buf) and vim.api.nvim_buf_get_option(buf, 'buftype') == '' then
-                local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
-                if ft ~= 'neo-tree' then
-                    for _, win in ipairs(vim.api.nvim_list_wins()) do
-                        if vim.api.nvim_win_get_buf(win) == buf then
-                            vim.api.nvim_set_current_win(win)
-                            require('dap').continue()
-                            return
-                        end
-                    end
-                end
-            end
-        end
-        vim.notify("No code buffer found", vim.log.levels.WARN)
-    else
-        require('dap').continue()
-    end
-end, 'Start/Continue debugging')
-
-map('n', '<F10>', function() require('dap').step_over() end, 'Step over')
-map('n', '<S-F10>', function() require('dap').step_into() end, 'Step into')
-map('n', '<S-F11>', function() require('dap').step_out() end, 'Step out')
-map('n', '<F6>', function() require('dap').restart() end, 'Restart debug')
-map('n', '<F8>', function() require('dap').terminate() end, 'Stop debug')
-
-
-map('n', '<leader>dn', function() require('dap').step_over() end, 'Step over')
-map('n', '<leader>ds', function() require('dap').step_into() end, 'Step into')
-map('n', '<leader>df', function() require('dap').step_out() end, 'Step out')
-map('n', '<leader>dr', function() require('dap').restart() end, 'Restart')
-map('n', '<leader>dR', function() require('dap').repl.open() end, 'REPL')
-map('n', '<leader>dq', function() require('dap').terminate() end, 'Quit')
-map('n', '<leader>du', function() require('dapui').toggle() end, 'Toggle UI')
-map('n', '<leader>dh', function() require('dap.ui.widgets').hover() end, 'Hover')
-
-map('n', '<leader>dU', function()
-    require('dapui').toggle()
-    vim.cmd("Neotree show")
-end, 'Toggle UI (keep NeoTree)')
-
-map('n', '<leader>dB', function()
-    require('dap').clear_breakpoints()
-    
-    -- Also delete the persisted breakpoints file
-    local config_path = find_project_root() .. '/.nvim/breakpoints.json'
-    if vim.fn.filereadable(config_path) == 1 then
-        vim.fn.delete(config_path)
-    end
-    
-    -- Refresh DAP UI if it's open
-    pcall(function() require('dapui').update_render() end)
-    
-    vim.notify("All breakpoints cleared and deleted from disk", vim.log.levels.INFO)
-end, 'Clear all breakpoints')
-
-map('n', '<leader>dl', function()
-    local bps = require('dap.breakpoints').get()
-    local qf = {}
-    
-    for buf, buf_bps in pairs(bps) do
-        local bufname = vim.api.nvim_buf_get_name(buf)
-        if bufname ~= '' then
-            for _, bp in ipairs(buf_bps) do
-                table.insert(qf, {bufnr = buf, lnum = bp.line, text = "Breakpoint", type = "I"})
-            end
-        end
-    end
-    
-    if #qf > 0 then
-        vim.fn.setqflist(qf, 'r')
-        vim.cmd('copen')
-        vim.notify("Showing " .. #qf .. " breakpoint(s)", vim.log.levels.INFO)
-    else
-        vim.notify("No breakpoints set", vim.log.levels.WARN)
-    end
-end, 'List breakpoints')
-
-map('n', '<leader>dX', function()
-    -- Delete persisted breakpoints file without clearing current session
-    local config_path = find_project_root() .. '/.nvim/breakpoints.json'
-    if vim.fn.filereadable(config_path) == 1 then
-        vim.fn.delete(config_path)
-        vim.notify("Deleted persisted breakpoints from disk", vim.log.levels.INFO)
-    else
-        vim.notify("No persisted breakpoints file found", vim.log.levels.WARN)
-    end
-end, 'Delete persisted breakpoints file')
--- }}}
-
--- Other {{{
-map_group('<leader>t', 'Terminal/Toggle')
-map('n', '<leader>u', ':UndotreeToggle<CR>', 'Undo tree')
-map('n', '<leader>tt', ':terminal<CR>', 'Terminal')
-
--- Easy escape from terminal mode
-map('t', '<Esc><Esc>', '<C-\\><C-n>', 'Exit terminal mode')
-
--- Terminal mode window navigation (use Ctrl+\ Ctrl+n first, then navigate)
-map('t', '<C-\\><C-h>', '<C-\\><C-n><C-w>h', 'Navigate left from terminal')
-map('t', '<C-\\><C-j>', '<C-\\><C-n><C-w>j', 'Navigate down from terminal')
-map('t', '<C-\\><C-k>', '<C-\\><C-n><C-w>k', 'Navigate up from terminal')
-map('t', '<C-\\><C-l>', '<C-\\><C-n><C-w>l', 'Navigate right from terminal')
--- }}}
-
--- Colorscheme {{{
-map('n', '<leader>fc', function()
-    local original = vim.g.colors_name or 'visual_studio_code'
-    local schemes = vim.fn.getcompletion('', 'color')
-    
-    require('mini.pick').start({
-        source = {
-            items = schemes,
-            name = 'Colorschemes',
-            preview = function(_, item)
-                pcall(function() vim.cmd('colorscheme ' .. item) end)
-            end,
-            choose = function(item)
-                if item then
-                    local ok = pcall(function() vim.cmd('colorscheme ' .. item) end)
-                    
-                    if ok then
-                        local file = io.open(vim.fn.stdpath('data') .. '/current_colorscheme.txt', 'w')
-                        if file then
-                            file:write(item)
-                            file:close()
-                        end
-                        print('Saved: ' .. item)
-                    else
-                        vim.cmd('colorscheme ' .. original)
-                        vim.notify('Failed to load: ' .. item, vim.log.levels.ERROR)
-                    end
-                else
-                    pcall(function() vim.cmd('colorscheme ' .. original) end)
-                end
-            end,
-        },
-    })
-end, 'Colorscheme picker')
--- }}}
-
--- }}}
 
 -- ============================================================================
 -- AUTOCOMMANDS {{{
@@ -1395,29 +1043,61 @@ vim.api.nvim_create_autocmd('LspAttach', {
 
 -- }}}
 
+
+
 -- ============================================================================
 -- LSP CONFIGURATION {{{
 -- ============================================================================
 
-vim.lsp.enable({"lua_ls", "bashls", "clangd", "ts_ls", "html", "cssls", "cmake"})
+-- ============================================================================
+-- LSP CONFIGURATION {{{
+-- ============================================================================
 
-local lsp_servers = {
-    {ft = {'c', 'cpp', 'objc', 'objcpp'}, name = 'clangd', cmd = {'clangd', '--background-index', '--clang-tidy', '--header-insertion=iwyu', '--completion-style=detailed', '--function-arg-placeholders', '--pch-storage=memory'}},
-    {ft = {'lua'}, name = 'lua_ls', cmd = {'lua-language-server'}},
-    {ft = {'sh', 'bash'}, name = 'bashls', cmd = {'bash-language-server', 'start'}},
-    {ft = {'javascript', 'typescript', 'javascriptreact', 'typescriptreact'}, name = 'ts_ls', cmd = {'typescript-language-server', '--stdio'}},
-    {ft = {'html'}, name = 'html', cmd = {'vscode-html-language-server', '--stdio'}},
-    {ft = {'css', 'scss', 'less'}, name = 'cssls', cmd = {'vscode-css-language-server', '--stdio'}},
-    {ft = {'cmake'}, name = 'cmake', cmd = {'cmake-language-server'}},
-}
+-- Build LSP servers list from language config
+local lsp_servers = {}
+for _, lang in ipairs(_G.supported_languages) do
+    if lang.lsp then
+        table.insert(lsp_servers, {
+            name = lang.lsp.name,
+            cmd = lang.lsp.cmd,
+            ft = lang.lsp.filetypes,
+        })
+    end
+end
 
+-- Load LSP enabled state
+local state_file = vim.fn.stdpath('data') .. '/lsp_enabled.json'
+local enabled_lsps = {}
+
+if vim.fn.filereadable(state_file) == 1 then
+    local ok, data = pcall(vim.fn.json_decode, vim.fn.readfile(state_file)[1])
+    if ok then
+        enabled_lsps = data
+    end
+end
+
+-- Enable LSPs that are toggled on (default all on if no state file)
+local lsps_to_enable = {}
 for _, srv in ipairs(lsp_servers) do
-    vim.api.nvim_create_autocmd('FileType', {
-        pattern = srv.ft,
-        callback = function()
-            vim.lsp.start({name = srv.name, cmd = srv.cmd})
-        end,
-    })
+    if enabled_lsps[srv.name] == nil or enabled_lsps[srv.name] == true then
+        table.insert(lsps_to_enable, srv.name)
+    end
+end
+
+if #lsps_to_enable > 0 then
+    vim.lsp.enable(lsps_to_enable)
+end
+
+-- Only configure LSPs that are enabled
+for _, srv in ipairs(lsp_servers) do
+    if enabled_lsps[srv.name] == nil or enabled_lsps[srv.name] == true then
+        vim.api.nvim_create_autocmd('FileType', {
+            pattern = srv.ft,
+            callback = function()
+                vim.lsp.start({name = srv.name, cmd = srv.cmd})
+            end,
+        })
+    end
 end
 
 vim.diagnostic.config({
@@ -1434,6 +1114,421 @@ for type, icon in pairs(signs) do
 end
 
 -- }}}
+
+
+-- ============================================================================
+-- COLORSCHEME {{{
+-- ============================================================================
+
+local cs_file = vim.fn.stdpath('data') .. '/current_colorscheme.txt'
+
+local function load_cs()
+    local f = io.open(cs_file, 'r')
+    if f then
+        local s = f:read('*all')
+        f:close()
+        return s:gsub('%s+', '')
+    end
+    return 'visual_studio_code'
+end
+
+local saved = load_cs()
+local ok = pcall(function() vim.cmd('colorscheme ' .. saved) end)
+
+if not ok then
+    vim.cmd('colorscheme visual_studio_code')
+    local f = io.open(cs_file, 'w')
+    if f then f:write('visual_studio_code'); f:close() end
+end
+
+vim.cmd("hi statusline guibg=NONE")
+
+-- }}}
+
+
+-- ============================================================================
+-- SETTINGS WINDOW {{{
+-- ============================================================================
+
+function _G.show_settings_window()
+    -- Create buffer
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.bo[buf].bufhidden = 'wipe'
+    vim.bo[buf].buftype = 'nofile'
+    vim.bo[buf].modifiable = false
+    
+    -- Window state
+    local current_view = "main"  -- "main", "colorscheme", "lsp"
+    local current_selection = 1
+    local header_lines = 4
+    
+    -- For colorscheme preview
+    local original_colorscheme = vim.g.colors_name or 'visual_studio_code'
+    local saved_colorscheme = original_colorscheme  -- Track the actually saved scheme
+    
+    -- For LSP state
+    local lsp_configs = {}
+    for _, lang in ipairs(_G.supported_languages) do
+        if lang.lsp then
+            table.insert(lsp_configs, {
+                name = lang.lsp.name,
+                ft = lang.lsp.filetypes,
+                cmd = lang.lsp.cmd,
+            })
+        end
+    end
+    
+    local state_file = vim.fn.stdpath('data') .. '/lsp_enabled.json'
+    local enabled_lsps = {}
+    
+    if vim.fn.filereadable(state_file) == 1 then
+        local ok, data = pcall(vim.fn.json_decode, vim.fn.readfile(state_file)[1])
+        if ok then
+            enabled_lsps = data
+        end
+    else
+        for _, lsp in ipairs(lsp_configs) do
+            enabled_lsps[lsp.name] = true
+        end
+    end
+    
+    -- Calculate window size dynamically
+    local function get_window_size()
+        local width = 60
+        local height = 12
+        
+        if current_view == "lsp" then
+            local max_width = 50
+            for _, lsp in ipairs(lsp_configs) do
+                local available = vim.fn.executable(lsp.cmd[1]) == 1 and "" or " (not installed)"
+                local line_width = #lsp.name + #available + 10
+                max_width = math.max(max_width, line_width)
+            end
+            max_width = math.max(max_width, 72)
+            width = math.min(max_width, vim.o.columns - 10)
+            height = #lsp_configs + 6
+        elseif current_view == "colorscheme" then
+            local schemes = vim.fn.getcompletion('', 'color')
+            height = math.min(#schemes + 6, vim.o.lines - 10)
+            width = 60
+        end
+        
+        return width, height
+    end
+    
+    local width, height = get_window_size()
+    local row = math.floor((vim.o.lines - height) / 2)
+    local col = math.floor((vim.o.columns - width) / 2)
+    
+    -- Create window
+    local win = vim.api.nvim_open_win(buf, true, {
+        relative = 'editor',
+        width = width,
+        height = height,
+        row = row,
+        col = col,
+        style = 'minimal',
+        border = 'rounded',
+        title = ' ⚙  Settings ',
+        title_pos = 'center',
+    })
+    
+    -- Disable UI elements
+    vim.wo[win].number = false
+    vim.wo[win].relativenumber = false
+    vim.wo[win].cursorline = true
+    vim.wo[win].cursorcolumn = false
+    vim.wo[win].signcolumn = 'no'
+    
+    -- Define settings items
+    local settings_items = {
+        {
+            name = "Colorscheme",
+            desc = "Change editor colorscheme",
+            action = function()
+                current_view = "colorscheme"
+                
+                -- Find the index of the currently saved colorscheme
+                local schemes = vim.fn.getcompletion('', 'color')
+                current_selection = 1
+                for i, scheme in ipairs(schemes) do
+                    if scheme == saved_colorscheme then
+                        current_selection = i
+                        break
+                    end
+                end
+                
+                render()
+            end
+        },
+        {
+            name = "LSP Servers",
+            desc = "Toggle language servers on/off",
+            action = function()
+                current_view = "lsp"
+                current_selection = 1
+                render()
+            end
+        },
+        {
+            name = "Auto-format",
+            desc = "Toggle automatic formatting: " .. (_G.autoformat_enabled and "ON" or "OFF"),
+            action = function()
+                _G.autoformat_enabled = not _G.autoformat_enabled
+                vim.notify("Auto-format: " .. (_G.autoformat_enabled and "ON" or "OFF"),
+                          _G.autoformat_enabled and vim.log.levels.INFO or vim.log.levels.WARN)
+                render()
+            end
+        },
+    }
+    
+    -- Render function
+    function render()
+        vim.bo[buf].modifiable = true
+        
+        -- Resize window if needed
+        local new_width, new_height = get_window_size()
+        if new_width ~= width or new_height ~= height then
+            width, height = new_width, new_height
+            row = math.floor((vim.o.lines - height) / 2)
+            col = math.floor((vim.o.columns - width) / 2)
+            vim.api.nvim_win_set_config(win, {
+                relative = 'editor',
+                width = width,
+                height = height,
+                row = row,
+                col = col,
+            })
+        end
+        
+        local lines = {}
+        local title = ' ⚙  Settings '
+        
+        if current_view == "main" then
+            lines = {
+                "Configure nvim-cpp settings",
+                "",
+                "Controls: j/k=Navigate | Enter/Space=Select | q/Esc=Close",
+                ""
+            }
+            
+            for i, item in ipairs(settings_items) do
+                if item.name == "Auto-format" then
+                    item.desc = "Toggle automatic formatting: " .. (_G.autoformat_enabled and "ON" or "OFF")
+                end
+                
+                local line = string.format("%s - %s", item.name, item.desc)
+                if i == current_selection then
+                    line = "❯ " .. line
+                else
+                    line = "  " .. line
+                end
+                table.insert(lines, line)
+            end
+            
+        elseif current_view == "colorscheme" then
+            title = ' 🎨 Colorschemes '
+            lines = {
+                "Select a colorscheme (preview only until Enter)",
+                "",
+                "Controls: j/k=Navigate | Enter=Apply & Save | Esc=Cancel | q=Back",
+                ""
+            }
+            
+            local schemes = vim.fn.getcompletion('', 'color')
+            for i, scheme in ipairs(schemes) do
+                local line = scheme
+                if scheme == saved_colorscheme then
+                    line = line .. " (current)"
+                end
+                
+                if i == current_selection then
+                    line = "❯ " .. line
+                    -- Preview colorscheme
+                    pcall(function() vim.cmd('colorscheme ' .. scheme) end)
+                else
+                    line = "  " .. line
+                end
+                table.insert(lines, line)
+            end
+            
+        elseif current_view == "lsp" then
+            title = ' 🔧 LSP Servers '
+            lines = {
+                "Toggle LSP servers",
+                "",
+                "Controls: j/k=Navigate | Space/Enter=Toggle | r=Restart | Esc=Cancel | q=Back",
+                ""
+            }
+            
+            for i, lsp in ipairs(lsp_configs) do
+                local status = enabled_lsps[lsp.name] and "[✓]" or "[ ]"
+                local available = vim.fn.executable(lsp.cmd[1]) == 1 and "" or " (not installed)"
+                local line = string.format("%s %s%s", status, lsp.name, available)
+                
+                if i == current_selection then
+                    line = "❯ " .. line
+                else
+                    line = "  " .. line
+                end
+                table.insert(lines, line)
+            end
+        end
+        
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+        vim.api.nvim_win_set_cursor(win, {header_lines + current_selection, 0})
+        
+        -- Update title
+        vim.api.nvim_win_set_config(win, {
+            relative = 'editor',
+            width = width,
+            height = height,
+            row = row,
+            col = col,
+            title = title,
+            title_pos = 'center',
+        })
+        
+        vim.bo[buf].modifiable = false
+    end
+    
+    -- Navigation functions
+    local function move_up()
+        if current_selection > 1 then
+            current_selection = current_selection - 1
+            render()
+        end
+    end
+    
+    local function move_down()
+        local max_items = 0
+        if current_view == "main" then
+            max_items = #settings_items
+        elseif current_view == "colorscheme" then
+            max_items = #vim.fn.getcompletion('', 'color')
+        elseif current_view == "lsp" then
+            max_items = #lsp_configs
+        end
+        
+        if current_selection < max_items then
+            current_selection = current_selection + 1
+            render()
+        end
+    end
+    
+    local function select_current()
+        if current_view == "main" then
+            local item = settings_items[current_selection]
+            if item and item.action then
+                item.action()
+            end
+        elseif current_view == "colorscheme" then
+            local schemes = vim.fn.getcompletion('', 'color')
+            local selected = schemes[current_selection]
+            if selected then
+                local ok = pcall(function() vim.cmd('colorscheme ' .. selected) end)
+                if ok then
+                    local cs_file = vim.fn.stdpath('data') .. '/current_colorscheme.txt'
+                    local file = io.open(cs_file, 'w')
+                    if file then
+                        file:write(selected)
+                        file:close()
+                        saved_colorscheme = selected  -- Update our saved tracker
+                        original_colorscheme = selected  -- Update the baseline
+                        vim.notify('Colorscheme saved: ' .. selected, vim.log.levels.INFO)
+                    else
+                        vim.notify('Failed to save colorscheme to file', vim.log.levels.ERROR)
+                    end
+                    current_view = "main"
+                    current_selection = 1
+                    render()
+                else
+                    vim.notify('Failed to load: ' .. selected, vim.log.levels.ERROR)
+                end
+            end
+        elseif current_view == "lsp" then
+            local lsp = lsp_configs[current_selection]
+            enabled_lsps[lsp.name] = not enabled_lsps[lsp.name]
+            
+            local file = io.open(state_file, 'w')
+            if file then
+                file:write(vim.fn.json_encode(enabled_lsps))
+                file:close()
+            end
+            
+            vim.notify(
+                lsp.name .. " " .. (enabled_lsps[lsp.name] and "enabled" or "disabled"),
+                vim.log.levels.INFO
+            )
+            render()
+        end
+    end
+    
+    local function go_back()
+        if current_view == "colorscheme" then
+            -- Restore original colorscheme if going back without saving
+            pcall(function() vim.cmd('colorscheme ' .. original_colorscheme) end)
+            current_view = "main"
+            current_selection = 1
+            render()
+        elseif current_view == "lsp" then
+            current_view = "main"
+            current_selection = 1
+            render()
+        else
+            vim.api.nvim_win_close(win, true)
+        end
+    end
+    
+    local function restart_lsps()
+        if current_view == "lsp" then
+            vim.api.nvim_win_close(win, true)
+            
+            local clients = vim.lsp.get_clients()
+            for _, client in ipairs(clients) do
+                client.stop()
+            end
+            
+            vim.notify("Stopping all LSP clients...", vim.log.levels.INFO)
+            
+            vim.defer_fn(function()
+                for _, buf_id in ipairs(vim.api.nvim_list_bufs()) do
+                    if vim.api.nvim_buf_is_loaded(buf_id) and vim.bo[buf_id].buftype == '' then
+                        local buf_ft = vim.bo[buf_id].filetype
+                        if buf_ft ~= '' then
+                            vim.api.nvim_exec_autocmds('FileType', {
+                                pattern = buf_ft,
+                            })
+                        end
+                    end
+                end
+                vim.notify("LSP clients restarted", vim.log.levels.INFO)
+            end, 500)
+        end
+    end
+    
+    -- Keymaps
+    vim.keymap.set('n', 'j', move_down, {buffer = buf, nowait = true, desc = "Move down"})
+    vim.keymap.set('n', 'k', move_up, {buffer = buf, nowait = true, desc = "Move up"})
+    vim.keymap.set('n', '<Down>', move_down, {buffer = buf, nowait = true, desc = "Move down"})
+    vim.keymap.set('n', '<Up>', move_up, {buffer = buf, nowait = true, desc = "Move up"})
+    vim.keymap.set('n', '<CR>', select_current, {buffer = buf, nowait = true, desc = "Select"})
+    vim.keymap.set('n', '<Space>', select_current, {buffer = buf, nowait = true, desc = "Select"})
+    vim.keymap.set('n', 'q', go_back, {buffer = buf, nowait = true, desc = "Back/Quit"})
+    vim.keymap.set('n', '<Esc>', go_back, {buffer = buf, nowait = true, desc = "Cancel/Back"})
+    vim.keymap.set('n', 'r', restart_lsps, {buffer = buf, nowait = true, desc = "Restart LSPs"})
+    
+    -- Disable other movement keys
+    local disabled_keys = {'h', 'l', 'w', 'b', 'e', '0', '$', 'gg', 'G', '{', '}', 'H', 'M', 'L'}
+    for _, key in ipairs(disabled_keys) do
+        vim.keymap.set('n', key, '<Nop>', {buffer = buf, nowait = true})
+    end
+    
+    render()
+end
+
+-- }}}
+
 
 -- ============================================================================
 -- PLUGIN CONFIGURATION {{{
@@ -1502,11 +1597,24 @@ require('Comment').setup({
 map('n', '<leader>/', 'gcc', 'Toggle comment', { remap = true })
 map('v', '<leader>/', 'gc', 'Toggle comment', { remap = true })
 
+
+
+-- Build Treesitter parsers list from language config
+local treesitter_parsers = {}
+for _, lang in ipairs(_G.supported_languages) do
+    if lang.treesitter then
+        for _, parser in ipairs(lang.treesitter) do
+            table.insert(treesitter_parsers, parser)
+        end
+    end
+end
+
 require('nvim-treesitter.configs').setup({
-    ensure_installed = { "c", "cpp", "cmake", "make", "bash", "lua", "javascript", "html", "css" },
+    ensure_installed = treesitter_parsers,
     highlight = { enable = true },
     indent = { enable = true },
 })
+
 
 require('mini.statusline').setup()
 require("mini.pick").setup()
@@ -1583,8 +1691,6 @@ if _G.mason_enabled then
         automatic_installation = true,
     })
     
-    -- Add Mason keymap
-    map('n', '<leader>lm', ':Mason<CR>', 'Mason installer')
 end
 -- }}}
 
@@ -2115,34 +2221,439 @@ vim.cmd([[
 
 -- }}}
 
+
+
 -- ============================================================================
--- COLORSCHEME {{{
+-- KEYBINDINGS {{{
 -- ============================================================================
 
-local cs_file = vim.fn.stdpath('data') .. '/current_colorscheme.txt'
+-- Basic {{{
+map('n', '<leader>w', ':write<CR>', 'Save file')
+map('n', '<leader>W', ':wa<CR>', 'Save all files')
+map('n', '<leader>q', ':quit<CR>', 'Quit window')
+map('n', '<leader>Q', ':qa<CR>', 'Quit all')
+map('n', '<leader>o', ':update<CR> :source<CR>', 'Reload config')
+map('n', '<Esc>', ':nohlsearch<CR>', 'Clear highlight', {silent = true})
+map('n', '<leader>x', ':xa<CR>', 'Save all and quit')
+-- }}}
 
-local function load_cs()
-    local f = io.open(cs_file, 'r')
-    if f then
-        local s = f:read('*all')
-        f:close()
-        return s:gsub('%s+', '')
+
+-- Settings {{{
+map_group('<leader>S', 'Settings')
+map('n', '<leader>S', _G.show_settings_window, 'Settings')
+-- }}}
+
+
+-- Windows {{{
+map('n', '<C-h>', '<C-w>h', 'Left split')
+map('n', '<C-j>', '<C-w>j', 'Bottom split')
+map('n', '<C-k>', '<C-w>k', 'Top split')
+map('n', '<C-l>', '<C-w>l', 'Right split')
+
+map('n', '<C-Left>', '<C-w>h', 'Left split')
+map('n', '<C-Right>', '<C-w>l', 'Right split')
+map('n', '<C-Up>', '<C-w>k', 'Top split')
+map('n', '<C-Down>', '<C-w>j', 'Bottom split')
+
+map_group('<leader>w', 'Windows/Save')
+map('n', '<C-M-Left>', ':leftabove vsplit<CR>', 'Split left', {silent = true})
+map('n', '<C-M-Right>', ':rightbelow vsplit<CR>', 'Split right', {silent = true})
+map('n', '<C-M-Up>', ':leftabove split<CR>', 'Split above', {silent = true})
+map('n', '<C-M-Down>', ':rightbelow split<CR>', 'Split below', {silent = true})
+
+map('n', '<leader>wh', ':leftabove vsplit<CR>', 'Split left', {silent = true})
+map('n', '<leader>wl', ':rightbelow vsplit<CR>', 'Split right', {silent = true})
+map('n', '<leader>wk', ':leftabove split<CR>', 'Split above', {silent = true})
+map('n', '<leader>wj', ':rightbelow split<CR>', 'Split below', {silent = true})
+-- }}}
+
+-- Buffers {{{
+map('n', '<Tab>', ':bnext<CR>', 'Next buffer')
+map('n', '<S-Tab>', ':bprevious<CR>', 'Previous buffer')
+map('n', '<leader>bd', ':bdelete<CR>', 'Delete buffer')
+map('n', '<leader>bn', ':bnext<CR>', 'Next buffer')
+map('n', '<leader>bp', ':bprevious<CR>', 'Previous buffer')
+-- }}}
+
+-- Jump List {{{
+map('n', '<C-o>', '<C-o>', 'Jump back')
+map('n', '<C-i>', '<C-i>', 'Jump forward')
+-- }}}
+
+-- Paste/Yank {{{
+map('x', 'p', '"_dP', 'Paste without yanking')
+map('v', 'y', 'ygv<Esc>', 'Yank and restore cursor')
+-- }}}
+
+-- LSP {{{
+map_group('<leader>l', 'LSP')
+map('n', 'gd', vim.lsp.buf.definition, 'Go to definition')
+map('n', 'gD', vim.lsp.buf.declaration, 'Go to declaration')
+map('n', 'gr', vim.lsp.buf.references, 'Go to references')
+map('n', 'gi', vim.lsp.buf.implementation, 'Go to implementation')
+map('n', 'K', vim.lsp.buf.hover, 'Hover documentation')
+map('n', '<leader>rn', vim.lsp.buf.rename, 'Rename symbol')
+map('n', '<leader>ca', vim.lsp.buf.code_action, 'Code actions')
+map('n', '<leader>lf', vim.lsp.buf.format, 'Format code')
+map('v', '<leader>lf', vim.lsp.buf.format, 'Format selection')
+
+_G.autoformat_enabled = true
+map('n', '<leader>lF', function()
+    _G.autoformat_enabled = not _G.autoformat_enabled
+    vim.notify("Auto-format: " .. (_G.autoformat_enabled and "ON" or "OFF"),
+               _G.autoformat_enabled and vim.log.levels.INFO or vim.log.levels.WARN)
+end, 'Toggle auto-format')
+-- }}}
+
+-- Diagnostics {{{
+map_group('<leader>e', 'Errors/Diagnostics')
+map('n', '[d', vim.diagnostic.goto_prev, 'Previous diagnostic')
+map('n', ']d', vim.diagnostic.goto_next, 'Next diagnostic')
+map('n', '[e', function()
+    vim.diagnostic.goto_prev({severity = vim.diagnostic.severity.ERROR})
+end, 'Previous error')
+map('n', ']e', function()
+    vim.diagnostic.goto_next({severity = vim.diagnostic.severity.ERROR})
+end, 'Next error')
+map('n', '<leader>e', vim.diagnostic.open_float, 'Show diagnostic')
+map('n', '<leader>el', vim.diagnostic.setloclist, 'Error list (buffer)')
+map('n', '<leader>ew', vim.diagnostic.setqflist, 'Error list (workspace)')
+-- }}}
+
+-- File Explorers {{{
+map('n', '-', '<CMD>Oil<CR>', 'Oil')
+map('n', '<leader>n', '<CMD>Neotree toggle<CR>', 'NeoTree')
+map('n', '<leader>y', '<CMD>Yazi<CR>', 'Yazi')
+map('n', '<leader>Y', '<CMD>Yazi cwd<CR>', 'Yazi (cwd)')
+-- }}}
+
+-- Marks {{{
+map_group('<leader>h', 'Marks')
+map('n', '<leader>h1', "m1", 'Set mark 1')
+map('n', '<leader>h2', "m2", 'Set mark 2')
+map('n', '<leader>h3', "m3", 'Set mark 3')
+map('n', '<leader>h4', "m4", 'Set mark 4')
+map('n', '<leader>h5', "m5", 'Set mark 5')
+
+map('n', '<leader>1', "'1", 'Jump to mark 1')
+map('n', '<leader>2', "'2", 'Jump to mark 2')
+map('n', '<leader>3', "'3", 'Jump to mark 3')
+map('n', '<leader>4', "'4", 'Jump to mark 4')
+map('n', '<leader>5', "'5", 'Jump to mark 5')
+-- }}}
+
+-- Folding {{{
+map('n', 'zR', function() require('ufo').openAllFolds() end, 'Open all folds')
+map('n', 'zM', function() require('ufo').closeAllFolds() end, 'Close all folds')
+map('n', 'zr', function() require('ufo').openFoldsExceptKinds() end, 'Open folds except kinds')
+map('n', 'zm', function() require('ufo').closeFoldsWith() end, 'Close folds with')
+map('n', 'zK', function()
+    local winid = require('ufo').peekFoldedLinesUnderCursor()
+    if not winid then vim.lsp.buf.hover() end
+end, 'Peek fold')
+-- }}}
+
+-- Find {{{
+map_group('<leader>f', 'Find')
+map('n', '<leader>ff', '<CMD>Pick files<CR>', 'Files')
+map('n', '<leader>fg', '<CMD>Pick grep_live<CR>', 'Grep')
+map('n', '<leader>fw', function()
+    require('mini.pick').builtin.grep_live({ pattern = vim.fn.expand('<cword>') })
+end, 'Word under cursor')
+map('n', '<leader>fb', '<CMD>Pick buffers<CR>', 'Buffers')
+map('n', '<leader>fo', '<CMD>Pick oldfiles<CR>', 'Recent files')
+map('n', '<leader>fl', '<CMD>Pick buf_lines<CR>', 'Lines')
+map('n', '<leader>fh', '<CMD>Pick help<CR>', 'Help')
+-- }}}
+
+-- Sessions {{{
+map_group('<leader>s', 'Session')
+map('n', '<leader>sd', ':SessionDelete<CR>', 'Delete')
+map('n', '<leader>sf', ':Autosession search<CR>', 'Find')
+map('n', '<leader>ss', ':mksession! .session.vim<CR>', 'Save')
+map('n', '<leader>sl', ':source .session.vim<CR>', 'Load')
+-- }}}
+
+-- C++ {{{
+map('n', '<leader>a', function()
+    local ext = vim.fn.expand('%:e')
+    local base = vim.fn.expand('%:r')
+    if ext == 'cpp' or ext == 'cc' or ext == 'c' then
+        vim.cmd('edit ' .. base .. '.h')
+    elseif ext == 'h' or ext == 'hpp' then
+        for _, source_ext in ipairs({'cpp', 'cc', 'c'}) do
+            if vim.fn.filereadable(base .. '.' .. source_ext) == 1 then
+                vim.cmd('edit ' .. base .. '.' .. source_ext)
+                return
+            end
+        end
     end
-    return 'visual_studio_code'
-end
+end, 'Toggle header/source')
+-- }}}
 
-local saved = load_cs()
-local ok = pcall(function() vim.cmd('colorscheme ' .. saved) end)
+-- Build {{{
+map_group('<leader>b', 'Build')
 
-if not ok then
-    vim.cmd('colorscheme visual_studio_code')
-    local f = io.open(cs_file, 'w')
-    if f then f:write('visual_studio_code'); f:close() end
-end
+map('n', '<leader>bp', function()
+    local root = find_project_root()
+    vim.notify("Project root: " .. root .. (root == vim.fn.getcwd() and " (current)" or ""), vim.log.levels.INFO)
+end, 'Show project root')
 
-vim.cmd("hi statusline guibg=NONE")
+map('n', '<leader>bP', cd_to_project_root, 'CD to project root')
+
+map('n', '<leader>bc', function()
+    local root = cd_to_project_root()
+    local build_dir = ensure_build_dir()
+    
+    if vim.fn.filereadable(root .. '/CMakeLists.txt') == 0 then
+        vim.notify("CMakeLists.txt not found", vim.log.levels.ERROR)
+        return
+    end
+    
+    vim.cmd('!cmake -B ' .. vim.fn.shellescape(build_dir) .. ' -S ' .. vim.fn.shellescape(root) .. ' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON')
+end, 'Configure CMake')
+
+map('n', '<leader>bb', function()
+    local root = cd_to_project_root()
+    local build_dir = ensure_build_dir()
+    
+    if vim.fn.filereadable(root .. '/CMakeLists.txt') == 0 then
+        vim.notify("CMakeLists.txt not found", vim.log.levels.ERROR)
+        return
+    end
+    
+    if vim.fn.filereadable(build_dir .. '/CMakeCache.txt') == 0 then
+        vim.notify("Build not configured. Run <leader>bc first.", vim.log.levels.WARN)
+        return
+    end
+    
+    vim.cmd('!cmake --build ' .. vim.fn.shellescape(build_dir))
+end, 'Build project')
+
+map('n', '<leader>br', _G.cmake_run_with_picker, 'Build & Run')
+
+map('n', '<leader>bt', function()
+    cd_to_project_root()
+    local build_dir = ensure_build_dir()
+    
+    if vim.fn.filereadable(build_dir .. '/CMakeCache.txt') == 0 then
+        vim.notify("Build not configured.", vim.log.levels.WARN)
+        return
+    end
+    
+    vim.cmd('!ctest --test-dir ' .. vim.fn.shellescape(build_dir))
+end, 'Run tests')
+
+map('n', '<leader>m', ':make<CR>', 'Make')
+map('n', '<leader>cs', function()
+    _G.last_cmake_target = nil
+    print("Target cache cleared.")
+end, 'Clear cached target')
+map('t', '<C-q>', '<C-\\><C-n>:q<CR>', 'Close terminal')
+-- }}}
+
+-- Git {{{
+map_group('<leader>g', 'Git')
+map('n', '<leader>gg', function()
+    if vim.fn.executable('lazygit') == 0 then
+        vim.notify('lazygit not installed', vim.log.levels.ERROR)
+        return
+    end
+    
+    if vim.bo.modified then vim.cmd('write') end
+    
+    local buf = vim.api.nvim_create_buf(false, true)
+    local width = math.floor(vim.o.columns * 0.95)
+    local height = math.floor(vim.o.lines * 0.95)
+    
+    local win = vim.api.nvim_open_win(buf, true, {
+        relative = 'editor',
+        width = width,
+        height = height,
+        row = math.floor((vim.o.lines - height) / 2),
+        col = math.floor((vim.o.columns - width) / 2),
+        style = 'minimal',
+        border = 'rounded',
+    })
+    
+    vim.bo[buf].buflisted = false
+    vim.bo[buf].bufhidden = 'wipe'
+    
+    vim.fn.termopen('lazygit', {
+        on_exit = function()
+            if vim.api.nvim_win_is_valid(win) then
+                vim.api.nvim_win_close(win, true)
+            end
+            vim.cmd('checktime')
+        end,
+    })
+    
+    vim.cmd('startinsert')
+    vim.keymap.set('t', 'q', function()
+        vim.api.nvim_win_close(win, true)
+    end, { buffer = buf })
+end, 'Lazygit (floating)')
+
+map('n', '<leader>gG', function()
+    if vim.fn.executable('lazygit') == 0 then
+        vim.notify('lazygit not installed', vim.log.levels.ERROR)
+        return
+    end
+    
+    vim.cmd('tabnew')
+    vim.fn.termopen('lazygit', {
+        on_exit = function()
+            vim.cmd('tabclose')
+            vim.cmd('checktime')
+        end,
+    })
+    vim.cmd('startinsert')
+end, 'Lazygit (tab)')
+
+map('n', ']c', ':Gitsigns next_hunk<CR>', 'Next hunk')
+map('n', '[c', ':Gitsigns prev_hunk<CR>', 'Previous hunk')
+map('n', '<leader>gp', ':Gitsigns preview_hunk<CR>', 'Preview hunk')
+map('n', '<leader>gb', ':Gitsigns blame_line<CR>', 'Blame')
+-- }}}
+
+-- Quickfix {{{
+map_group('<leader>c', 'CMake/Quickfix')
+map('n', '<leader>co', ':copen<CR>', 'Open quickfix')
+map('n', '<leader>cc', ':cclose<CR>', 'Close quickfix')
+map('n', '[q', ':cprev<CR>', 'Previous')
+map('n', ']q', ':cnext<CR>', 'Next')
+-- }}}
+
+-- Debug {{{
+map_group('<leader>d', 'Debug')
+
+map('n', '<leader>dd', function() require('dap').continue() end, 'Debug (DAP)')
+map('n', '<leader>dD', function() require('dap').continue() end, 'Debug (console)')
+map('n', '<leader>dg', _G.debug_in_terminal, 'Debug (GDB)')
+
+map('n', '<leader>db', function()
+    require('dap').toggle_breakpoint()
+    -- Refresh DAP UI if it's open
+    pcall(function() require('dapui').update_render() end)
+end, 'Toggle breakpoint')
+
+map('n', '<F9>', function()
+    require('dap').toggle_breakpoint()
+    -- Refresh DAP UI if it's open
+    pcall(function() require('dapui').update_render() end)
+end, 'Toggle breakpoint')
+
+map('n', '<F5>', function() 
+    if vim.bo.filetype == 'neo-tree' or vim.bo.buftype ~= '' then
+        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+            if vim.api.nvim_buf_is_loaded(buf) and vim.api.nvim_buf_get_option(buf, 'buftype') == '' then
+                local ft = vim.api.nvim_buf_get_option(buf, 'filetype')
+                if ft ~= 'neo-tree' then
+                    for _, win in ipairs(vim.api.nvim_list_wins()) do
+                        if vim.api.nvim_win_get_buf(win) == buf then
+                            vim.api.nvim_set_current_win(win)
+                            require('dap').continue()
+                            return
+                        end
+                    end
+                end
+            end
+        end
+        vim.notify("No code buffer found", vim.log.levels.WARN)
+    else
+        require('dap').continue()
+    end
+end, 'Start/Continue debugging')
+
+map('n', '<F10>', function() require('dap').step_over() end, 'Step over')
+map('n', '<S-F10>', function() require('dap').step_into() end, 'Step into')
+map('n', '<S-F11>', function() require('dap').step_out() end, 'Step out')
+map('n', '<F6>', function() require('dap').restart() end, 'Restart debug')
+map('n', '<F8>', function() require('dap').terminate() end, 'Stop debug')
+
+
+map('n', '<leader>dn', function() require('dap').step_over() end, 'Step over')
+map('n', '<leader>ds', function() require('dap').step_into() end, 'Step into')
+map('n', '<leader>df', function() require('dap').step_out() end, 'Step out')
+map('n', '<leader>dr', function() require('dap').restart() end, 'Restart')
+map('n', '<leader>dR', function() require('dap').repl.open() end, 'REPL')
+map('n', '<leader>dq', function() require('dap').terminate() end, 'Quit')
+map('n', '<leader>du', function() require('dapui').toggle() end, 'Toggle UI')
+map('n', '<leader>dh', function() require('dap.ui.widgets').hover() end, 'Hover')
+
+map('n', '<leader>dU', function()
+    require('dapui').toggle()
+    vim.cmd("Neotree show")
+end, 'Toggle UI (keep NeoTree)')
+
+map('n', '<leader>dB', function()
+    require('dap').clear_breakpoints()
+    
+    -- Also delete the persisted breakpoints file
+    local config_path = find_project_root() .. '/.nvim/breakpoints.json'
+    if vim.fn.filereadable(config_path) == 1 then
+        vim.fn.delete(config_path)
+    end
+    
+    -- Refresh DAP UI if it's open
+    pcall(function() require('dapui').update_render() end)
+    
+    vim.notify("All breakpoints cleared and deleted from disk", vim.log.levels.INFO)
+end, 'Clear all breakpoints')
+
+map('n', '<leader>dl', function()
+    local bps = require('dap.breakpoints').get()
+    local qf = {}
+    
+    for buf, buf_bps in pairs(bps) do
+        local bufname = vim.api.nvim_buf_get_name(buf)
+        if bufname ~= '' then
+            for _, bp in ipairs(buf_bps) do
+                table.insert(qf, {bufnr = buf, lnum = bp.line, text = "Breakpoint", type = "I"})
+            end
+        end
+    end
+    
+    if #qf > 0 then
+        vim.fn.setqflist(qf, 'r')
+        vim.cmd('copen')
+        vim.notify("Showing " .. #qf .. " breakpoint(s)", vim.log.levels.INFO)
+    else
+        vim.notify("No breakpoints set", vim.log.levels.WARN)
+    end
+end, 'List breakpoints')
+
+map('n', '<leader>dX', function()
+    -- Delete persisted breakpoints file without clearing current session
+    local config_path = find_project_root() .. '/.nvim/breakpoints.json'
+    if vim.fn.filereadable(config_path) == 1 then
+        vim.fn.delete(config_path)
+        vim.notify("Deleted persisted breakpoints from disk", vim.log.levels.INFO)
+    else
+        vim.notify("No persisted breakpoints file found", vim.log.levels.WARN)
+    end
+end, 'Delete persisted breakpoints file')
+-- }}}
+
+-- Other {{{
+map_group('<leader>t', 'Terminal/Toggle')
+map('n', '<leader>u', ':UndotreeToggle<CR>', 'Undo tree')
+map('n', '<leader>tt', ':terminal<CR>', 'Terminal')
+
+-- Easy escape from terminal mode
+map('t', '<Esc><Esc>', '<C-\\><C-n>', 'Exit terminal mode')
+
+-- Terminal mode window navigation (use Ctrl+\ Ctrl+n first, then navigate)
+map('t', '<C-\\><C-h>', '<C-\\><C-n><C-w>h', 'Navigate left from terminal')
+map('t', '<C-\\><C-j>', '<C-\\><C-n><C-w>j', 'Navigate down from terminal')
+map('t', '<C-\\><C-k>', '<C-\\><C-n><C-w>k', 'Navigate up from terminal')
+map('t', '<C-\\><C-l>', '<C-\\><C-n><C-w>l', 'Navigate right from terminal')
+-- }}}
+
 
 -- }}}
+
+
 
 -- ============================================================================
 -- REGISTER WHICH-KEY {{{
