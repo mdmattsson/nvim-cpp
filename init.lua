@@ -1151,26 +1151,27 @@ vim.cmd("hi statusline guibg=NONE")
 -- ============================================================================
 
 function _G.show_settings_window()
-    -- Create buffer
+    -- Create buffer and window
     local buf = vim.api.nvim_create_buf(false, true)
     vim.bo[buf].bufhidden = 'wipe'
     vim.bo[buf].buftype = 'nofile'
     vim.bo[buf].modifiable = false
     
-    -- Window state
-    local current_view = "main"  -- "main", "colorscheme", "lsp"
-    local current_selection = 1
-    local header_lines = 4
+    -- State
+    local state = {
+        view = "main",
+        selection = 1,
+        original_cs = vim.g.colors_name or 'visual_studio_code',
+        saved_cs = vim.g.colors_name or 'visual_studio_code',
+        lsp_configs = {},
+        enabled_lsps = {},
+        lsp_state_file = vim.fn.stdpath('data') .. '/lsp_enabled.json',
+    }
     
-    -- For colorscheme preview
-    local original_colorscheme = vim.g.colors_name or 'visual_studio_code'
-    local saved_colorscheme = original_colorscheme  -- Track the actually saved scheme
-    
-    -- For LSP state
-    local lsp_configs = {}
+    -- Load LSP configs and state
     for _, lang in ipairs(_G.supported_languages) do
         if lang.lsp then
-            table.insert(lsp_configs, {
+            table.insert(state.lsp_configs, {
                 name = lang.lsp.name,
                 ft = lang.lsp.filetypes,
                 cmd = lang.lsp.cmd,
@@ -1178,356 +1179,281 @@ function _G.show_settings_window()
         end
     end
     
-    local state_file = vim.fn.stdpath('data') .. '/lsp_enabled.json'
-    local enabled_lsps = {}
-    
-    if vim.fn.filereadable(state_file) == 1 then
-        local ok, data = pcall(vim.fn.json_decode, vim.fn.readfile(state_file)[1])
-        if ok then
-            enabled_lsps = data
-        end
+    if vim.fn.filereadable(state.lsp_state_file) == 1 then
+        local ok, data = pcall(vim.fn.json_decode, vim.fn.readfile(state.lsp_state_file)[1])
+        if ok then state.enabled_lsps = data end
     else
-        for _, lsp in ipairs(lsp_configs) do
-            enabled_lsps[lsp.name] = true
+        for _, lsp in ipairs(state.lsp_configs) do
+            state.enabled_lsps[lsp.name] = true
         end
     end
-    
-    -- Calculate window size dynamically
-    local function get_window_size()
-        local width = 60
-        local height = 12
-        
-        if current_view == "lsp" then
-            local max_width = 50
-            for _, lsp in ipairs(lsp_configs) do
-                local available = vim.fn.executable(lsp.cmd[1]) == 1 and "" or " (not installed)"
-                local line_width = #lsp.name + #available + 10
-                max_width = math.max(max_width, line_width)
-            end
-            max_width = math.max(max_width, 72)
-            width = math.min(max_width, vim.o.columns - 10)
-            height = #lsp_configs + 6
-        elseif current_view == "colorscheme" then
-            local schemes = vim.fn.getcompletion('', 'color')
-            height = math.min(#schemes + 6, vim.o.lines - 10)
-            width = 60
-        end
-        
-        return width, height
-    end
-    
-    local width, height = get_window_size()
-    local row = math.floor((vim.o.lines - height) / 2)
-    local col = math.floor((vim.o.columns - width) / 2)
     
     -- Create window
+    local width, height = 70, 15
     local win = vim.api.nvim_open_win(buf, true, {
         relative = 'editor',
         width = width,
         height = height,
-        row = row,
-        col = col,
+        row = math.floor((vim.o.lines - height) / 2),
+        col = math.floor((vim.o.columns - width) / 2),
         style = 'minimal',
         border = 'rounded',
         title = ' ⚙  Settings ',
         title_pos = 'center',
     })
     
-    -- Disable UI elements
     vim.wo[win].number = false
     vim.wo[win].relativenumber = false
     vim.wo[win].cursorline = true
     vim.wo[win].cursorcolumn = false
     vim.wo[win].signcolumn = 'no'
     
-    -- Define settings items
-    local settings_items = {
-        {
-            name = "Colorscheme",
-            desc = "Change editor colorscheme",
-            action = function()
-                current_view = "colorscheme"
-                
-                -- Find the index of the currently saved colorscheme
-                local schemes = vim.fn.getcompletion('', 'color')
-                current_selection = 1
-                for i, scheme in ipairs(schemes) do
-                    if scheme == saved_colorscheme then
-                        current_selection = i
-                        break
-                    end
-                end
-                
-                render()
-            end
+    -- Hide cursor
+    local original_guicursor = vim.o.guicursor
+    local cursorline_bg = vim.api.nvim_get_hl(0, {name = 'CursorLine'}).bg
+    if cursorline_bg then
+        vim.api.nvim_set_hl(0, 'SettingsHiddenCursor', { 
+            fg = string.format("#%06x", cursorline_bg),
+            bg = string.format("#%06x", cursorline_bg),
+        })
+        vim.o.guicursor = 'a:hor1-SettingsHiddenCursor'
+    end
+    vim.api.nvim_create_autocmd('WinClosed', {
+        pattern = tostring(win),
+        callback = function() vim.o.guicursor = original_guicursor end,
+        once = true
+    })
+    
+    -- Helper to update cursor color after colorscheme change
+    local function update_cursor_hl()
+        local bg = vim.api.nvim_get_hl(0, {name = 'CursorLine'}).bg
+        if bg then
+            local hex = string.format("#%06x", bg)
+            vim.api.nvim_set_hl(0, 'SettingsHiddenCursor', { fg = hex, bg = hex })
+        end
+    end
+    
+    -- Menu definitions
+    local menus = {
+        main = {
+            {"🎨", "Colorscheme", "Change editor colorscheme", function() state.view, state.selection = "colorscheme", 1; for i, s in ipairs(vim.fn.getcompletion('', 'color')) do if s == state.saved_cs then state.selection = i break end end end},
+            {"🔧", "LSP Servers", "Toggle language servers on/off", function() state.view, state.selection = "lsp", 1 end},
+            {"🖥", "Display Settings", "Line numbers, signs, wrapping, etc.", function() state.view, state.selection = "display", 1 end},
+            {"✏ ", "Editor Behavior", "Tabs, scrolling, mouse, clipboard, formatting", function() state.view, state.selection = "editor", 1 end},
+            {"🌿", "Git Integration", "Git signs and blame settings", function() state.view, state.selection = "git", 1 end},
+            {"🩺", "Diagnostics", "LSP diagnostic display options", function() state.view, state.selection = "diagnostics", 1 end},
         },
-        {
-            name = "LSP Servers",
-            desc = "Toggle language servers on/off",
-            action = function()
-                current_view = "lsp"
-                current_selection = 1
-                render()
-            end
+        display = {
+            {"Line Numbers", function() local m = vim.wo.relativenumber and "relative" or (vim.wo.number and "absolute" or "off"); return m == "off" and "[ ]" or (m == "absolute" and "[#]" or "[~]") end, function() local m = vim.wo.relativenumber and "relative" or (vim.wo.number and "absolute" or "off"); if m == "off" then vim.wo.number, vim.wo.relativenumber = true, false elseif m == "absolute" then vim.wo.number, vim.wo.relativenumber = true, true else vim.wo.number, vim.wo.relativenumber = false, false end end},
+            {"Sign Column", function() return vim.wo.signcolumn == "yes" and "[✓]" or (vim.wo.signcolumn == "auto" and "[~]" or "[ ]") end, function() vim.wo.signcolumn = vim.wo.signcolumn == "yes" and "no" or (vim.wo.signcolumn == "no" and "auto" or "yes") end},
+            {"Cursor Line", function() return vim.wo.cursorline and "[✓]" or "[ ]" end, function() vim.wo.cursorline = not vim.wo.cursorline end},
+            {"Line Wrapping", function() return vim.wo.wrap and "[✓]" or "[ ]" end, function() vim.wo.wrap = not vim.wo.wrap end},
+            {"Color Column", function() return vim.wo.colorcolumn == "" and "[ ]" or (vim.wo.colorcolumn == "80" and "[80]" or "[120]") end, function() vim.wo.colorcolumn = vim.wo.colorcolumn == "" and "80" or (vim.wo.colorcolumn == "80" and "120" or "") end},
         },
-        {
-            name = "Auto-format",
-            desc = "Toggle automatic formatting: " .. (_G.autoformat_enabled and "ON" or "OFF"),
-            action = function()
-                _G.autoformat_enabled = not _G.autoformat_enabled
-                vim.notify("Auto-format: " .. (_G.autoformat_enabled and "ON" or "OFF"),
-                          _G.autoformat_enabled and vim.log.levels.INFO or vim.log.levels.WARN)
-                render()
-            end
+        editor = {
+            {"Tab Width", function() return "Spaces: " .. vim.bo.tabstop end, function() local t = vim.bo.tabstop; vim.bo.tabstop, vim.bo.shiftwidth = (t == 2 and 4 or (t == 4 and 8 or 2)), (t == 2 and 4 or (t == 4 and 8 or 2)) end},
+            {"Scroll Offset", function() return "Lines: " .. vim.o.scrolloff end, function() local s = vim.o.scrolloff; vim.o.scrolloff = s == 0 and 4 or (s == 4 and 8 or (s == 8 and 12 or 0)) end},
+            {separator = true},
+            {"Expand Tabs", function() return vim.bo.expandtab and "[✓] Spaces" or "[ ] Tabs" end, function() vim.bo.expandtab = not vim.bo.expandtab end},
+            {"Mouse Support", function() return vim.o.mouse == "a" and "[✓]" or "[ ]" end, function() vim.o.mouse = vim.o.mouse == "a" and "" or "a" end},
+            {"System Clipboard", function() return vim.o.clipboard == "unnamedplus" and "[✓]" or "[ ]" end, function() vim.o.clipboard = vim.o.clipboard == "unnamedplus" and "" or "unnamedplus" end},
+            {"Spell Check", function() return vim.wo.spell and "[✓]" or "[ ]" end, function() vim.wo.spell = not vim.wo.spell end},
+            {"Auto-format", function() return _G.autoformat_enabled and "[✓]" or "[ ]" end, function() _G.autoformat_enabled = not _G.autoformat_enabled; vim.notify("Auto-format: " .. (_G.autoformat_enabled and "ON" or "OFF"), _G.autoformat_enabled and vim.log.levels.INFO or vim.log.levels.WARN) end},
+        },
+        git = {
+            {"Git Signs", function() local ok, g = pcall(require, 'gitsigns.config'); return (ok and g and g.config and g.config.signcolumn) and "[✓]" or "[ ]" end, function() require('gitsigns').toggle_signs() end},
+            {"Git Blame", function() local ok, g = pcall(require, 'gitsigns.config'); return (ok and g and g.config and g.config.current_line_blame) and "[✓]" or "[ ]" end, function() require('gitsigns').toggle_current_line_blame() end},
+            {"Git Line Highlight", function() local ok, g = pcall(require, 'gitsigns.config'); return (ok and g and g.config and g.config.linehl) and "[✓]" or "[ ]" end, function() require('gitsigns').toggle_linehl() end},
+        },
+        diagnostics = {
+            {"Virtual Text", function() return vim.diagnostic.config().virtual_text and "[✓]" or "[ ]" end, function() vim.diagnostic.config({virtual_text = not vim.diagnostic.config().virtual_text}) end},
+            {"Diagnostic Signs", function() return vim.diagnostic.config().signs and "[✓]" or "[ ]" end, function() vim.diagnostic.config({signs = not vim.diagnostic.config().signs}) end},
+            {"Underline Diagnostics", function() return vim.diagnostic.config().underline and "[✓]" or "[ ]" end, function() vim.diagnostic.config({underline = not vim.diagnostic.config().underline}) end},
+            {"Update in Insert", function() return vim.diagnostic.config().update_in_insert and "[✓]" or "[ ]" end, function() vim.diagnostic.config({update_in_insert = not vim.diagnostic.config().update_in_insert}) end},
         },
     }
     
-    -- Render function
-    function render()
+    -- View metadata
+    local view_info = {
+        main = {title = ' ⚙  Settings ', footer = ' j/k=Navigate | Enter/Space=Select | q/Esc=Close '},
+        colorscheme = {title = ' 🎨 Colorschemes ', footer = ' j/k=Navigate | Enter=Apply & Save | Esc=Cancel | q=Back '},
+        lsp = {title = ' 🔧 LSP Servers ', footer = ' j/k=Navigate | Space/Enter=Toggle | r=Restart | q=Back '},
+        display = {title = ' 🖥  Display Settings ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
+        editor = {title = ' ✏  Editor Behavior ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
+        git = {title = ' 🌿 Git Integration ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
+        diagnostics = {title = ' 🩺 Diagnostics ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
+    }
+    
+    -- Render
+    local function render()
         vim.bo[buf].modifiable = true
+        vim.api.nvim_set_hl(0, 'SettingsFooter', { reverse = true })
         
-        -- Resize window if needed
-        local new_width, new_height = get_window_size()
-        if new_width ~= width or new_height ~= height then
-            width, height = new_width, new_height
-            row = math.floor((vim.o.lines - height) / 2)
-            col = math.floor((vim.o.columns - width) / 2)
-            vim.api.nvim_win_set_config(win, {
-                relative = 'editor',
-                width = width,
-                height = height,
-                row = row,
-                col = col,
-            })
-        end
+        local lines = {""}
+        local info = view_info[state.view]
         
-        local lines = {}
-        local title = ' ⚙  Settings '
-        
-        if current_view == "main" then
-            lines = {
-                "Configure nvim-cpp settings",
-                "",
-                "Controls: j/k=Navigate | Enter/Space=Select | q/Esc=Close",
-                ""
-            }
-            
-            for i, item in ipairs(settings_items) do
-                if item.name == "Auto-format" then
-                    item.desc = "Toggle automatic formatting: " .. (_G.autoformat_enabled and "ON" or "OFF")
-                end
-                
-                local line = string.format("%s - %s", item.name, item.desc)
-                if i == current_selection then
-                    line = "❯ " .. line
-                else
-                    line = "  " .. line
-                end
-                table.insert(lines, line)
+        if state.view == "main" then
+            for i, item in ipairs(menus.main) do
+                lines[#lines+1] = (i == state.selection) 
+                    and string.format("> %s %s - %s", item[1], item[2], item[3])
+                    or string.format("  %s %s", item[1], item[2])
             end
-            
-        elseif current_view == "colorscheme" then
-            title = ' 🎨 Colorschemes '
-            lines = {
-                "Select a colorscheme (preview only until Enter)",
-                "",
-                "Controls: j/k=Navigate | Enter=Apply & Save | Esc=Cancel | q=Back",
-                ""
-            }
-            
-            local schemes = vim.fn.getcompletion('', 'color')
-            for i, scheme in ipairs(schemes) do
-                local line = scheme
-                if scheme == saved_colorscheme then
-                    line = line .. " (current)"
-                end
-                
-                if i == current_selection then
-                    line = "❯ " .. line
-                    -- Preview colorscheme
+        elseif state.view == "colorscheme" then
+            for i, scheme in ipairs(vim.fn.getcompletion('', 'color')) do
+                local line = scheme .. (scheme == state.saved_cs and " (current)" or "")
+                if i == state.selection then
                     pcall(function() vim.cmd('colorscheme ' .. scheme) end)
+                    vim.api.nvim_set_hl(0, 'SettingsFooter', { reverse = true })
+                    update_cursor_hl()
+                    lines[#lines+1] = "> " .. line
                 else
-                    line = "  " .. line
+                    lines[#lines+1] = "  " .. line
                 end
-                table.insert(lines, line)
             end
-            
-        elseif current_view == "lsp" then
-            title = ' 🔧 LSP Servers '
-            lines = {
-                "Toggle LSP servers",
-                "",
-                "Controls: j/k=Navigate | Space/Enter=Toggle | r=Restart | Esc=Cancel | q=Back",
-                ""
-            }
-            
-            for i, lsp in ipairs(lsp_configs) do
-                local status = enabled_lsps[lsp.name] and "[✓]" or "[ ]"
-                local available = vim.fn.executable(lsp.cmd[1]) == 1 and "" or " (not installed)"
-                local line = string.format("%s %s%s", status, lsp.name, available)
-                
-                if i == current_selection then
-                    line = "❯ " .. line
+        elseif state.view == "lsp" then
+            for i, lsp in ipairs(state.lsp_configs) do
+                local status = state.enabled_lsps[lsp.name] and "[✓]" or "[ ]"
+                local avail = vim.fn.executable(lsp.cmd[1]) == 1 and "" or " (not installed)"
+                lines[#lines+1] = (i == state.selection and "> " or "  ") .. status .. " " .. lsp.name .. avail
+            end
+        else
+            -- Generic menu rendering for display/editor/git/diagnostics
+            local menu = menus[state.view]
+            local item_idx = 0
+            for i, item in ipairs(menu) do
+                if item.separator then
+                    lines[#lines+1] = ""
                 else
-                    line = "  " .. line
+                    item_idx = item_idx + 1
+                    local desc = type(item[2]) == "function" and item[2]() or item[2]
+                    lines[#lines+1] = (item_idx == state.selection and "> " or "  ") .. desc .. " " .. item[1]
                 end
-                table.insert(lines, line)
             end
         end
+        
+        -- Fill and add footer
+        for i = #lines + 1, height do lines[i] = "" end
+        local padding = math.max(0, math.floor((width - #info.footer) / 2))
+        lines[#lines+1] = string.rep(" ", padding) .. info.footer .. string.rep(" ", width - padding - #info.footer)
         
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-        vim.api.nvim_win_set_cursor(win, {header_lines + current_selection, 0})
+        vim.api.nvim_win_set_config(win, {relative = 'editor', width = width, height = height, 
+            row = math.floor((vim.o.lines - height) / 2), col = math.floor((vim.o.columns - width) / 2),
+            title = info.title, title_pos = 'center'})
         
-        -- Update title
-        vim.api.nvim_win_set_config(win, {
-            relative = 'editor',
-            width = width,
-            height = height,
-            row = row,
-            col = col,
-            title = title,
-            title_pos = 'center',
+        -- Set cursor
+        local cursor_line = state.selection + 1
+        if state.view == "editor" then
+            for i = 1, state.selection do
+                if menus.editor[i].separator then cursor_line = cursor_line + 1 end
+            end
+        end
+        vim.api.nvim_win_set_cursor(win, {cursor_line, 0})
+        
+        -- Footer highlight
+        local ns = vim.api.nvim_create_namespace('settings_footer')
+        vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+        vim.api.nvim_buf_set_extmark(buf, ns, #lines - 1, 0, {
+            end_line = #lines - 1, end_col = #lines[#lines], hl_group = 'SettingsFooter', hl_eol = true, priority = 1000
         })
-        
         vim.bo[buf].modifiable = false
     end
     
-    -- Navigation functions
-    local function move_up()
-        if current_selection > 1 then
-            current_selection = current_selection - 1
-            render()
-        end
-    end
-    
-    local function move_down()
-        local max_items = 0
-        if current_view == "main" then
-            max_items = #settings_items
-        elseif current_view == "colorscheme" then
-            max_items = #vim.fn.getcompletion('', 'color')
-        elseif current_view == "lsp" then
-            max_items = #lsp_configs
-        end
-        
-        if current_selection < max_items then
-            current_selection = current_selection + 1
-            render()
-        end
-    end
-    
-    local function select_current()
-        if current_view == "main" then
-            local item = settings_items[current_selection]
-            if item and item.action then
-                item.action()
+    -- Get max items for current view
+    local function get_max_items()
+        if state.view == "main" then return #menus.main
+        elseif state.view == "colorscheme" then return #vim.fn.getcompletion('', 'color')
+        elseif state.view == "lsp" then return #state.lsp_configs
+        else
+            local count = 0
+            for _, item in ipairs(menus[state.view] or {}) do
+                if not item.separator then count = count + 1 end
             end
-        elseif current_view == "colorscheme" then
-            local schemes = vim.fn.getcompletion('', 'color')
-            local selected = schemes[current_selection]
-            if selected then
-                local ok = pcall(function() vim.cmd('colorscheme ' .. selected) end)
-                if ok then
-                    local cs_file = vim.fn.stdpath('data') .. '/current_colorscheme.txt'
-                    local file = io.open(cs_file, 'w')
-                    if file then
-                        file:write(selected)
-                        file:close()
-                        saved_colorscheme = selected  -- Update our saved tracker
-                        original_colorscheme = selected  -- Update the baseline
-                        vim.notify('Colorscheme saved: ' .. selected, vim.log.levels.INFO)
-                    else
-                        vim.notify('Failed to save colorscheme to file', vim.log.levels.ERROR)
-                    end
-                    current_view = "main"
-                    current_selection = 1
-                    render()
-                else
-                    vim.notify('Failed to load: ' .. selected, vim.log.levels.ERROR)
+            return count
+        end
+    end
+    
+    -- Actions
+    local function select()
+        if state.view == "main" then
+            menus.main[state.selection][4]()
+            render()
+        elseif state.view == "colorscheme" then
+            local scheme = vim.fn.getcompletion('', 'color')[state.selection]
+            if pcall(function() vim.cmd('colorscheme ' .. scheme) end) then
+                local f = io.open(vim.fn.stdpath('data') .. '/current_colorscheme.txt', 'w')
+                if f then f:write(scheme); f:close() end
+                state.saved_cs, state.original_cs = scheme, scheme
+                vim.notify('Colorscheme saved: ' .. scheme, vim.log.levels.INFO)
+                state.view, state.selection = "main", 1
+                render()
+            end
+        elseif state.view == "lsp" then
+            local lsp = state.lsp_configs[state.selection]
+            state.enabled_lsps[lsp.name] = not state.enabled_lsps[lsp.name]
+            local f = io.open(state.lsp_state_file, 'w')
+            if f then f:write(vim.fn.json_encode(state.enabled_lsps)); f:close() end
+            vim.notify(lsp.name .. " " .. (state.enabled_lsps[lsp.name] and "enabled" or "disabled"), vim.log.levels.INFO)
+            render()
+        else
+            local menu = menus[state.view]
+            local item_idx = 0
+            for _, item in ipairs(menu) do
+                if not item.separator then
+                    item_idx = item_idx + 1
+                    if item_idx == state.selection then item[3](); render(); break end
                 end
             end
-        elseif current_view == "lsp" then
-            local lsp = lsp_configs[current_selection]
-            enabled_lsps[lsp.name] = not enabled_lsps[lsp.name]
-            
-            local file = io.open(state_file, 'w')
-            if file then
-                file:write(vim.fn.json_encode(enabled_lsps))
-                file:close()
-            end
-            
-            vim.notify(
-                lsp.name .. " " .. (enabled_lsps[lsp.name] and "enabled" or "disabled"),
-                vim.log.levels.INFO
-            )
-            render()
         end
     end
     
     local function go_back()
-        if current_view == "colorscheme" then
-            -- Restore original colorscheme if going back without saving
-            pcall(function() vim.cmd('colorscheme ' .. original_colorscheme) end)
-            current_view = "main"
-            current_selection = 1
-            render()
-        elseif current_view == "lsp" then
-            current_view = "main"
-            current_selection = 1
-            render()
-        else
+        if state.view == "colorscheme" then
+            pcall(function() vim.cmd('colorscheme ' .. state.original_cs) end)
+        end
+        if state.view == "main" then
             vim.api.nvim_win_close(win, true)
+        else
+            state.view, state.selection = "main", 1
+            render()
         end
     end
     
-    local function restart_lsps()
-        if current_view == "lsp" then
+    -- Keymaps
+    local function map(key, fn) vim.keymap.set('n', key, fn, {buffer = buf, nowait = true}) end
+    map('j', function() if state.selection < get_max_items() then state.selection = state.selection + 1; render() end end)
+    map('k', function() if state.selection > 1 then state.selection = state.selection - 1; render() end end)
+    map('<Down>', function() if state.selection < get_max_items() then state.selection = state.selection + 1; render() end end)
+    map('<Up>', function() if state.selection > 1 then state.selection = state.selection - 1; render() end end)
+    map('<CR>', select)
+    map('<Space>', select)
+    map('q', go_back)
+    map('<Esc>', go_back)
+    map('r', function()
+        if state.view == "lsp" then
             vim.api.nvim_win_close(win, true)
-            
-            local clients = vim.lsp.get_clients()
-            for _, client in ipairs(clients) do
-                client.stop()
-            end
-            
+            for _, c in ipairs(vim.lsp.get_clients()) do c.stop() end
             vim.notify("Stopping all LSP clients...", vim.log.levels.INFO)
-            
             vim.defer_fn(function()
-                for _, buf_id in ipairs(vim.api.nvim_list_bufs()) do
-                    if vim.api.nvim_buf_is_loaded(buf_id) and vim.bo[buf_id].buftype == '' then
-                        local buf_ft = vim.bo[buf_id].filetype
-                        if buf_ft ~= '' then
-                            vim.api.nvim_exec_autocmds('FileType', {
-                                pattern = buf_ft,
-                            })
-                        end
+                for _, b in ipairs(vim.api.nvim_list_bufs()) do
+                    if vim.api.nvim_buf_is_loaded(b) and vim.bo[b].buftype == '' then
+                        local ft = vim.bo[b].filetype
+                        if ft ~= '' then vim.api.nvim_exec_autocmds('FileType', {pattern = ft}) end
                     end
                 end
                 vim.notify("LSP clients restarted", vim.log.levels.INFO)
             end, 500)
         end
-    end
+    end)
     
-    -- Keymaps
-    vim.keymap.set('n', 'j', move_down, {buffer = buf, nowait = true, desc = "Move down"})
-    vim.keymap.set('n', 'k', move_up, {buffer = buf, nowait = true, desc = "Move up"})
-    vim.keymap.set('n', '<Down>', move_down, {buffer = buf, nowait = true, desc = "Move down"})
-    vim.keymap.set('n', '<Up>', move_up, {buffer = buf, nowait = true, desc = "Move up"})
-    vim.keymap.set('n', '<CR>', select_current, {buffer = buf, nowait = true, desc = "Select"})
-    vim.keymap.set('n', '<Space>', select_current, {buffer = buf, nowait = true, desc = "Select"})
-    vim.keymap.set('n', 'q', go_back, {buffer = buf, nowait = true, desc = "Back/Quit"})
-    vim.keymap.set('n', '<Esc>', go_back, {buffer = buf, nowait = true, desc = "Cancel/Back"})
-    vim.keymap.set('n', 'r', restart_lsps, {buffer = buf, nowait = true, desc = "Restart LSPs"})
-    
-    -- Disable other movement keys
-    local disabled_keys = {'h', 'l', 'w', 'b', 'e', '0', '$', 'gg', 'G', '{', '}', 'H', 'M', 'L'}
-    for _, key in ipairs(disabled_keys) do
-        vim.keymap.set('n', key, '<Nop>', {buffer = buf, nowait = true})
+    for _, key in ipairs({'h', 'l', 'w', 'b', 'e', '0', '$', 'gg', 'G', '{', '}', 'H', 'M', 'L', '<Left>', '<Right>'}) do
+        map(key, function() end)
     end
     
     render()
 end
-
 -- }}}
+
 
 
 -- ============================================================================
