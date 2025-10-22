@@ -34,6 +34,11 @@ A minimal, fast, and powerful Neovim configuration optimized for C++/CMake devel
 # 1. Clone the repository
 git clone https://github.com/mdmattsson/nvim-cpp ~/.config/nvim
 
+# or use a symbolik link
+# move your existing ~/.config/nvim to ~/.config/nvim_bak
+git clone https://github.com/mdmattsson/nvim-cpp ~/.config/nvim-cpp
+ln -s ~/.config/nvim-cpp ~/.config/nvim
+
 # 2. Install LSP servers
 cd ~/.config/nvim && chmod +x install_lsp.sh && ./install_lsp.sh
 

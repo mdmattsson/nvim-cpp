@@ -416,6 +416,39 @@ vim.o.clipboard = 'unnamedplus'
 
 vim.cmd("set completeopt+=noselect")
 
+-- Bufferline visibility state
+local bufferline_state = vim.fn.stdpath('data') .. '/bufferline_visible'
+if vim.fn.filereadable(bufferline_state) == 1 then
+    _G.bufferline_visible = vim.fn.readfile(bufferline_state)[1] == '1'
+else
+    _G.bufferline_visible = true  -- Default: visible
+end
+
+
+-- Satellite scrollbar state
+local satellite_state = vim.fn.stdpath('data') .. '/satellite_enabled'
+if vim.fn.filereadable(satellite_state) == 1 then
+    _G.satellite_enabled = vim.fn.readfile(satellite_state)[1] == '1'
+else
+    _G.satellite_enabled = true  -- Default: enabled
+end
+
+-- Neoscroll state
+local neoscroll_state = vim.fn.stdpath('data') .. '/neoscroll_enabled'
+if vim.fn.filereadable(neoscroll_state) == 1 then
+    _G.neoscroll_enabled = vim.fn.readfile(neoscroll_state)[1] == '1'
+else
+    _G.neoscroll_enabled = true  -- Default: enabled
+end
+
+local neoscroll_duration_file = vim.fn.stdpath('data') .. '/neoscroll_duration'
+if vim.fn.filereadable(neoscroll_duration_file) == 1 then
+    _G.neoscroll_duration = tonumber(vim.fn.readfile(neoscroll_duration_file)[1]) or 300
+else
+    _G.neoscroll_duration = 300  -- Default: 300ms
+end
+
+
 -- }}}
 
 -- ============================================================================
@@ -423,41 +456,64 @@ vim.cmd("set completeopt+=noselect")
 -- ============================================================================
 
 vim.pack.add({
-    {src="https://github.com/vague2k/vague.nvim"},
-    {src="https://github.com/folke/tokyonight.nvim"},
-    {src="https://github.com/askfiy/visual_studio_code"},
-    {src="https://github.com/navarasu/onedark.nvim"},
-    {src="https://github.com/projekt0n/github-nvim-theme"},
-    {src="https://github.com/stevearc/oil.nvim"},
-    {src="https://github.com/echasnovski/mini.pick"},
-    {src="https://github.com/nvim-neo-tree/neo-tree.nvim"},
-    {src="https://github.com/mikavilpas/yazi.nvim"},
-    {src="https://github.com/rmagatti/auto-session"},
-    {src="https://github.com/echasnovski/mini.statusline"},
-    {src="https://github.com/lewis6991/gitsigns.nvim"},
-    {src="https://github.com/folke/which-key.nvim"},
-    {src="https://github.com/nvim-tree/nvim-web-devicons"},
-    {src="https://github.com/MunifTanjim/nui.nvim"},
-    {src="https://github.com/kevinhwang91/nvim-ufo"},
-    {src="https://github.com/kevinhwang91/promise-async"},
-    {src="https://github.com/numToStr/Comment.nvim"},
-    {src="https://github.com/windwp/nvim-autopairs"},
-    {src="https://github.com/mbbill/undotree"},
-    {src="https://github.com/nvim-treesitter/nvim-treesitter"},
-    {src="https://github.com/nvim-lua/plenary.nvim"},
-    {src="https://github.com/Civitasv/cmake-tools.nvim"},
-    {src="https://github.com/mfussenegger/nvim-dap"},
-    {src="https://github.com/rcarriga/nvim-dap-ui"},
-    {src="https://github.com/ldelossa/nvim-dap-projects"},
-    {src="https://github.com/nvim-neotest/nvim-nio"},
-    {src="https://github.com/chomosuke/typst-preview.nvim"},
+    { src = 'https://github.com/vague2k/vague.nvim' },
+    { src = 'https://github.com/folke/tokyonight.nvim' },
+    { src = 'https://github.com/askfiy/visual_studio_code' },
+    { src = 'https://github.com/navarasu/onedark.nvim' },
+    { src = 'https://github.com/projekt0n/github-nvim-theme' },
+    { src = 'https://github.com/stevearc/oil.nvim' },
+    -- { src = 'https://github.com/echasnovski/mini.pick' },
+    { src = 'https://github.com/nvim-neo-tree/neo-tree.nvim' },
+    { src = 'https://github.com/mikavilpas/yazi.nvim' },
+    { src = 'https://github.com/rmagatti/auto-session' },
+    { src = 'https://github.com/echasnovski/mini.statusline' },
+    { src = 'https://github.com/lewis6991/gitsigns.nvim' },
+    { src = 'https://github.com/folke/which-key.nvim' },
+    { src = 'https://github.com/nvim-tree/nvim-web-devicons' },
+    { src = 'https://github.com/MunifTanjim/nui.nvim' },
+    { src = 'https://github.com/kevinhwang91/nvim-ufo' },
+    { src = 'https://github.com/kevinhwang91/promise-async' },
+    { src = 'https://github.com/numToStr/Comment.nvim' },
+    { src = 'https://github.com/windwp/nvim-autopairs' },
+    { src = 'https://github.com/mbbill/undotree' },
+    { src = 'https://github.com/nvim-treesitter/nvim-treesitter' },
+    { src = 'https://github.com/nvim-telescope/telescope.nvim' },
+    { src = 'https://github.com/nvim-lua/plenary.nvim' },
+    { src = 'https://github.com/ThePrimeagen/harpoon', version = 'harpoon2' },
+    { src = 'https://github.com/Civitasv/cmake-tools.nvim' },
+    { src = 'https://github.com/mfussenegger/nvim-dap' },
+    { src = 'https://github.com/rcarriga/nvim-dap-ui' },
+    { src = 'https://github.com/ldelossa/nvim-dap-projects' },
+    { src = 'https://github.com/nvim-neotest/nvim-nio' },
+    { src = 'https://github.com/chomosuke/typst-preview.nvim' },
+    { src = 'https://github.com/akinsho/bufferline.nvim' },
+    { src = 'https://github.com/karb94/neoscroll.nvim' },
+    { src = 'https://github.com/lewis6991/satellite.nvim' },
+    
     -- Conditionally load Mason
-    _G.mason_enabled and {src="https://github.com/williamboman/mason.nvim"} or nil,
-    _G.mason_enabled and {src="https://github.com/williamboman/mason-lspconfig.nvim"} or nil,
+    _G.mason_enabled and { src = 'https://github.com/williamboman/mason.nvim'} or nil,
+    _G.mason_enabled and { src = 'https://github.com/williamboman/mason-lspconfig.nvim'} or nil,
     
 })
 
 -- }}}
+
+
+-- Workaround: Force harpoon to harpoon2 branch (vim.pack version parameter is broken)
+do
+    local harpoon_path = vim.fn.stdpath('data') .. '/site/pack/core/opt/harpoon'
+    if vim.fn.isdirectory(harpoon_path) == 1 then
+        local result = vim.fn.system('cd ' .. harpoon_path .. ' && git symbolic-ref -q HEAD')
+        -- If in detached HEAD or wrong branch
+        if vim.v.shell_error ~= 0 or not result:match('harpoon2') then
+            vim.fn.system('cd ' .. harpoon_path .. ' && git checkout harpoon2 2>&1')
+            if vim.v.shell_error == 0 then
+                print("Harpoon: switched to harpoon2 branch")
+            end
+        end
+    end
+end
+
 
 -- ============================================================================
 -- CMAKE & BUILD UTILITIES {{{
@@ -950,6 +1006,7 @@ vim.api.nvim_create_autocmd('TermOpen', {
 })
 -- }}}
 
+
 -- Project root {{{
 vim.api.nvim_create_autocmd('VimEnter', {
     callback = function()
@@ -1156,7 +1213,7 @@ function _G.show_settings_window()
     vim.bo[buf].bufhidden = 'wipe'
     vim.bo[buf].buftype = 'nofile'
     vim.bo[buf].modifiable = false
-    
+
     -- State
     local state = {
         view = "main",
@@ -1167,7 +1224,7 @@ function _G.show_settings_window()
         enabled_lsps = {},
         lsp_state_file = vim.fn.stdpath('data') .. '/lsp_enabled.json',
     }
-    
+
     -- Load LSP configs and state
     for _, lang in ipairs(_G.supported_languages) do
         if lang.lsp then
@@ -1178,7 +1235,7 @@ function _G.show_settings_window()
             })
         end
     end
-    
+
     if vim.fn.filereadable(state.lsp_state_file) == 1 then
         local ok, data = pcall(vim.fn.json_decode, vim.fn.readfile(state.lsp_state_file)[1])
         if ok then state.enabled_lsps = data end
@@ -1202,28 +1259,46 @@ function _G.show_settings_window()
         title_pos = 'center',
     })
     
+    -- Hide cursor in settings window
+    local original_guicursor = vim.o.guicursor
+
+    local function update_settings_cursor()
+        local cursorline_bg = vim.api.nvim_get_hl(0, {name = 'CursorLine'}).bg
+        if cursorline_bg then
+            local bg_hex = string.format("#%06x", cursorline_bg)
+            vim.api.nvim_set_hl(0, 'SettingsCursor', { 
+                fg = bg_hex,
+                bg = bg_hex,
+                blend = 100,  -- Add blend as well
+            })
+        end
+    end
+
+    update_settings_cursor()
+    -- Use hor1 (1-pixel horizontal) with the color-matched highlight
+    vim.opt.guicursor = 'n-v-c-sm:hor1-SettingsCursor,i-ci-ve:hor1-SettingsCursor,r-cr-o:hor1-SettingsCursor'
+
+    vim.api.nvim_create_autocmd({'WinEnter', 'BufEnter'}, {
+        buffer = buf,
+        callback = function()
+            update_settings_cursor()
+            vim.opt.guicursor = 'n-v-c-sm:hor1-SettingsCursor,i-ci-ve:hor1-SettingsCursor,r-cr-o:hor1-SettingsCursor'
+        end
+    })
+
+    vim.api.nvim_create_autocmd({'WinLeave', 'BufLeave'}, {
+        buffer = buf,
+        callback = function()
+            vim.opt.guicursor = original_guicursor
+        end
+    })
+
     vim.wo[win].number = false
     vim.wo[win].relativenumber = false
     vim.wo[win].cursorline = true
     vim.wo[win].cursorcolumn = false
     vim.wo[win].signcolumn = 'no'
-    
-    -- Hide cursor
-    local original_guicursor = vim.o.guicursor
-    local cursorline_bg = vim.api.nvim_get_hl(0, {name = 'CursorLine'}).bg
-    if cursorline_bg then
-        vim.api.nvim_set_hl(0, 'SettingsHiddenCursor', { 
-            fg = string.format("#%06x", cursorline_bg),
-            bg = string.format("#%06x", cursorline_bg),
-        })
-        vim.o.guicursor = 'a:hor1-SettingsHiddenCursor'
-    end
-    vim.api.nvim_create_autocmd('WinClosed', {
-        pattern = tostring(win),
-        callback = function() vim.o.guicursor = original_guicursor end,
-        once = true
-    })
-    
+
     -- Helper to update cursor color after colorscheme change
     local function update_cursor_hl()
         local bg = vim.api.nvim_get_hl(0, {name = 'CursorLine'}).bg
@@ -1249,6 +1324,8 @@ function _G.show_settings_window()
             {"Cursor Line", function() return vim.wo.cursorline and "[✓]" or "[ ]" end, function() vim.wo.cursorline = not vim.wo.cursorline end},
             {"Line Wrapping", function() return vim.wo.wrap and "[✓]" or "[ ]" end, function() vim.wo.wrap = not vim.wo.wrap end},
             {"Color Column", function() return vim.wo.colorcolumn == "" and "[ ]" or (vim.wo.colorcolumn == "80" and "[80]" or "[120]") end, function() vim.wo.colorcolumn = vim.wo.colorcolumn == "" and "80" or (vim.wo.colorcolumn == "80" and "120" or "") end},
+            {"Bufferline Tabs", function() return _G.bufferline_visible and "[✓]" or "[ ]" end, function() _G.bufferline_visible = not _G.bufferline_visible; local f = io.open(vim.fn.stdpath('data') .. '/bufferline_visible', 'w'); if f then f:write(_G.bufferline_visible and '1' or '0'); f:close() end; vim.o.showtabline = _G.bufferline_visible and 2 or 0; vim.notify("Bufferline " .. (_G.bufferline_visible and "shown" or "hidden"), vim.log.levels.INFO) end},
+            {"Satellite Scrollbar", function() return _G.satellite_enabled and "[✓]" or "[ ]" end, function() _G.satellite_enabled = not _G.satellite_enabled; local f = io.open(vim.fn.stdpath('data') .. '/satellite_enabled', 'w'); if f then f:write(_G.satellite_enabled and '1' or '0'); f:close() end; if _G.satellite_enabled then require('satellite').setup({current_only = false, winblend = 50, zindex = 40, excluded_filetypes = {'neo-tree', 'TelescopePrompt'}, width = 2, handlers = {cursor = {enable = true}, diagnostic = {enable = true}, gitsigns = {enable = true}, marks = {enable = true}, quickfix = {enable = true}}}) else require('satellite').disable() end; vim.notify("Satellite scrollbar " .. (_G.satellite_enabled and "enabled" or "disabled"), vim.log.levels.INFO) end},
         },
         editor = {
             {"Tab Width", function() return "Spaces: " .. vim.bo.tabstop end, function() local t = vim.bo.tabstop; vim.bo.tabstop, vim.bo.shiftwidth = (t == 2 and 4 or (t == 4 and 8 or 2)), (t == 2 and 4 or (t == 4 and 8 or 2)) end},
@@ -1259,6 +1336,9 @@ function _G.show_settings_window()
             {"System Clipboard", function() return vim.o.clipboard == "unnamedplus" and "[✓]" or "[ ]" end, function() vim.o.clipboard = vim.o.clipboard == "unnamedplus" and "" or "unnamedplus" end},
             {"Spell Check", function() return vim.wo.spell and "[✓]" or "[ ]" end, function() vim.wo.spell = not vim.wo.spell end},
             {"Auto-format", function() return _G.autoformat_enabled and "[✓]" or "[ ]" end, function() _G.autoformat_enabled = not _G.autoformat_enabled; vim.notify("Auto-format: " .. (_G.autoformat_enabled and "ON" or "OFF"), _G.autoformat_enabled and vim.log.levels.INFO or vim.log.levels.WARN) end},
+            {separator = true},
+            {"Smooth Scrolling", function() return _G.neoscroll_enabled and "[✓]" or "[ ]" end, function() _G.neoscroll_enabled = not _G.neoscroll_enabled; local f = io.open(vim.fn.stdpath('data') .. '/neoscroll_enabled', 'w'); if f then f:write(_G.neoscroll_enabled and '1' or '0'); f:close() end; if _G.neoscroll_enabled then require('neoscroll').setup({mappings = {}, hide_cursor = true, stop_eof = true, respect_scrolloff = false, cursor_scrolls_alone = true, easing = 'linear', performance_mode = false}); local neoscroll = require('neoscroll'); vim.keymap.set({'n', 'v', 'x'}, '<PageUp>', function() neoscroll.scroll(-vim.api.nvim_win_get_height(0), {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<PageDown>', function() neoscroll.scroll(vim.api.nvim_win_get_height(0), {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<C-b>', function() neoscroll.scroll(-vim.api.nvim_win_get_height(0), {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<C-f>', function() neoscroll.scroll(vim.api.nvim_win_get_height(0), {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<C-u>', function() neoscroll.scroll(-vim.wo.scroll, {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<C-d>', function() neoscroll.scroll(vim.wo.scroll, {move_cursor=true, duration=_G.neoscroll_duration}) end) else pcall(vim.keymap.del, {'n', 'v', 'x'}, '<PageUp>'); pcall(vim.keymap.del, {'n', 'v', 'x'}, '<PageDown>'); pcall(vim.keymap.del, {'n', 'v', 'x'}, '<C-b>'); pcall(vim.keymap.del, {'n', 'v', 'x'}, '<C-f>'); pcall(vim.keymap.del, {'n', 'v', 'x'}, '<C-u>'); pcall(vim.keymap.del, {'n', 'v', 'x'}, '<C-d>') end; vim.notify("Smooth scrolling " .. (_G.neoscroll_enabled and "enabled" or "disabled"), vim.log.levels.INFO) end},
+            {"Scroll Duration", function() return _G.neoscroll_enabled and (_G.neoscroll_duration .. "ms") or "[disabled]" end, function() if not _G.neoscroll_enabled then vim.notify("Enable smooth scrolling first", vim.log.levels.WARN); return end; _G.neoscroll_duration = (_G.neoscroll_duration + 50 > 1000) and 50 or (_G.neoscroll_duration + 50); local f = io.open(vim.fn.stdpath('data') .. '/neoscroll_duration', 'w'); if f then f:write(tostring(_G.neoscroll_duration)); f:close() end; local neoscroll = require('neoscroll'); vim.keymap.set({'n', 'v', 'x'}, '<PageUp>', function() neoscroll.scroll(-vim.api.nvim_win_get_height(0), {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<PageDown>', function() neoscroll.scroll(vim.api.nvim_win_get_height(0), {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<C-b>', function() neoscroll.scroll(-vim.api.nvim_win_get_height(0), {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<C-f>', function() neoscroll.scroll(vim.api.nvim_win_get_height(0), {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<C-u>', function() neoscroll.scroll(-vim.wo.scroll, {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.keymap.set({'n', 'v', 'x'}, '<C-d>', function() neoscroll.scroll(vim.wo.scroll, {move_cursor=true, duration=_G.neoscroll_duration}) end); vim.notify("Scroll duration: " .. _G.neoscroll_duration .. "ms", vim.log.levels.INFO) end},
         },
         git = {
             {"Git Signs", function() local ok, g = pcall(require, 'gitsigns.config'); return (ok and g and g.config and g.config.signcolumn) and "[✓]" or "[ ]" end, function() require('gitsigns').toggle_signs() end},
@@ -1283,8 +1363,9 @@ function _G.show_settings_window()
         git = {title = ' 🌿 Git Integration ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
         diagnostics = {title = ' 🩺 Diagnostics ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
     }
-    
-    -- Render
+
+
+-- Render
     local function render()
         vim.bo[buf].modifiable = true
         vim.api.nvim_set_hl(0, 'SettingsFooter', { reverse = true })
@@ -1299,7 +1380,17 @@ function _G.show_settings_window()
                     or string.format("  %s %s", item[1], item[2])
             end
         elseif state.view == "colorscheme" then
-            for i, scheme in ipairs(vim.fn.getcompletion('', 'color')) do
+            local schemes = vim.fn.getcompletion('', 'color')
+            -- Calculate visible range (show only height - 1 items at a time)
+            local start_idx = math.max(1, state.selection - math.floor((height - 1) / 2))
+            local end_idx = math.min(#schemes, start_idx + height - 2)
+            -- Adjust start if we're near the end
+            if end_idx - start_idx < height - 2 then
+                start_idx = math.max(1, end_idx - height + 2)
+            end
+            
+            for i = start_idx, end_idx do
+                local scheme = schemes[i]
                 local line = scheme .. (scheme == state.saved_cs and " (current)" or "")
                 if i == state.selection then
                     pcall(function() vim.cmd('colorscheme ' .. scheme) end)
@@ -1331,31 +1422,72 @@ function _G.show_settings_window()
             end
         end
         
-        -- Fill and add footer
-        for i = #lines + 1, height do lines[i] = "" end
+        -- Pad to height - 1 (leave room for footer)
+        while #lines < height do
+            lines[#lines + 1] = ""
+        end
+        
+        -- Add footer
         local padding = math.max(0, math.floor((width - #info.footer) / 2))
-        lines[#lines+1] = string.rep(" ", padding) .. info.footer .. string.rep(" ", width - padding - #info.footer)
+        lines[#lines + 1] = string.rep(" ", padding) .. info.footer .. string.rep(" ", width - padding - #info.footer)
         
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-        vim.api.nvim_win_set_config(win, {relative = 'editor', width = width, height = height, 
-            row = math.floor((vim.o.lines - height) / 2), col = math.floor((vim.o.columns - width) / 2),
-            title = info.title, title_pos = 'center'})
+        vim.api.nvim_win_set_config(win, {
+            relative = 'editor', 
+            width = width, 
+            height = height + 1, 
+            row = math.floor((vim.o.lines - (height + 1)) / 2), 
+            col = math.floor((vim.o.columns - width) / 2),
+            title = info.title, 
+            title_pos = 'center'
+        })
         
-        -- Set cursor
-        local cursor_line = state.selection + 1
-        if state.view == "editor" then
-            for i = 1, state.selection do
-                if menus.editor[i].separator then cursor_line = cursor_line + 1 end
+        -- Set cursor (for colorscheme view, calculate relative position)
+        local cursor_line
+        if state.view == "colorscheme" then
+            local schemes = vim.fn.getcompletion('', 'color')
+            local start_idx = math.max(1, state.selection - math.floor((height - 1) / 2))
+            local end_idx = math.min(#schemes, start_idx + height - 2)
+            
+            -- Adjust start if we're near the end
+            if end_idx - start_idx < height - 2 then
+                start_idx = math.max(1, end_idx - height + 2)
             end
+            
+            -- Cursor is at: selection - start_idx + 2 (for empty first line and 1-indexed)
+            cursor_line = state.selection - start_idx + 2
+        elseif state.view == "editor" then
+            -- For editor view, count separators before current selection
+            local item_count = 0
+            cursor_line = 1  -- Start at line 1 (empty first line)
+            for i, item in ipairs(menus.editor) do
+                if item.separator then
+                    cursor_line = cursor_line + 1
+                else
+                    item_count = item_count + 1
+                    cursor_line = cursor_line + 1
+                    if item_count == state.selection then
+                        break
+                    end
+                end
+            end
+        else
+            cursor_line = state.selection + 1
         end
+        
         vim.api.nvim_win_set_cursor(win, {cursor_line, 0})
         
         -- Footer highlight
         local ns = vim.api.nvim_create_namespace('settings_footer')
         vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
         vim.api.nvim_buf_set_extmark(buf, ns, #lines - 1, 0, {
-            end_line = #lines - 1, end_col = #lines[#lines], hl_group = 'SettingsFooter', hl_eol = true, priority = 1000
+            end_line = #lines - 1, 
+            end_col = #lines[#lines], 
+            hl_group = 'SettingsFooter', 
+            hl_eol = true, 
+            priority = 1000
         })
+        
         vim.bo[buf].modifiable = false
     end
     
@@ -1456,6 +1588,7 @@ end
 
 
 
+
 -- ============================================================================
 -- PLUGIN CONFIGURATION {{{
 -- ============================================================================
@@ -1510,6 +1643,8 @@ require('gitsigns').setup({
         changedelete = { text = '~' },
     },
 })
+
+
 require('Comment').setup({
     padding = true,
     sticky = true,
@@ -1543,7 +1678,7 @@ require('nvim-treesitter.configs').setup({
 
 
 require('mini.statusline').setup()
-require("mini.pick").setup()
+--require("mini.pick").setup()
 require("oil").setup()
 require("cmake-tools").setup({})
 require("typst-preview").setup()
@@ -1588,6 +1723,186 @@ require('ufo').setup({
         return newVirtText
     end
 })
+-- }}}
+
+
+-- Bufferline {{{
+require('bufferline').setup({
+    options = {
+        mode = "buffers",
+        numbers = "none",
+        close_command = "bdelete! %d",
+        right_mouse_command = "bdelete! %d",
+        left_mouse_command = "buffer %d",
+        indicator = {
+            icon = '▎',
+            style = 'icon',
+        },
+        buffer_close_icon = '󰅖',
+        modified_icon = '●',
+        close_icon = '',
+        left_trunc_marker = '',
+        right_trunc_marker = '',
+        max_name_length = 18,
+        diagnostics = "nvim_lsp",
+        diagnostics_indicator = function(count, level)
+            local icon = level:match("error") and " " or " "
+            return " " .. icon .. count
+        end,
+        offsets = {
+            {
+                filetype = "neo-tree",
+                text = "File Explorer",
+                text_align = "center",
+                separator = true
+            }
+        },
+        color_icons = true,
+        show_buffer_icons = true,
+        show_buffer_close_icons = true,
+        show_close_icon = false,
+        separator_style = "thin",
+        always_show_bufferline = _G.bufferline_visible or true,  -- Controlled by setting
+    }
+})
+
+-- Keymaps for bufferline
+-- map('n', '<leader>zb', ':BufferLinePick<CR>', 'Pick buffer')
+-- map('n', '<leader>zB', ':BufferLinePickClose<CR>', 'Pick close buffer')
+-- map('n', '[b', ':BufferLineCyclePrev<CR>', 'Previous buffer')
+-- map('n', ']b', ':BufferLineCycleNext<CR>', 'Next buffer')
+--map('n', '<leader>bd', ':bdelete<CR>', 'Delete buffer')
+map('n', '<leader>bD', ':BufferLineCloseOthers<CR>', 'Delete other buffers')
+-- map('n', '<leader>bh', ':BufferLineCloseLeft<CR>', 'Delete buffers to left')
+-- map('n', '<leader>bl', ':BufferLineCloseRight<CR>', 'Delete buffers to right')
+
+
+
+-- }}}
+
+
+-- Telescope {{{
+require('telescope').setup({
+    defaults = {
+        mappings = {
+            i = {
+                ["<C-j>"] = require('telescope.actions').move_selection_next,
+                ["<C-k>"] = require('telescope.actions').move_selection_previous,
+                ["<C-q>"] = require('telescope.actions').close,  -- Ctrl-q to close
+                ["<Up>"] = false,      -- Disable up arrow
+                ["<Down>"] = false,    -- Disable down arrow
+                ["<Left>"] = false,    -- Optional: disable left
+                ["<Right>"] = false,   -- Optional: disable right
+            },
+            n = {
+                ["<Up>"] = false,      -- Disable in normal mode too
+                ["<Down>"] = false,
+                ["<Left>"] = false,
+                ["<Right>"] = false,
+            },
+        },
+        prompt_prefix = " ",
+        selection_caret = " ",
+        path_display = { "truncate" },
+        file_ignore_patterns = { 
+            "node_modules", 
+            ".git/", 
+            "build/",
+            ".cache/",
+            ".nvim/",
+        },
+        layout_config = {
+            horizontal = {
+                preview_width = 0.55,
+            },
+        },
+    },
+    pickers = {
+        find_files = {
+            hidden = false,
+            find_command = { "rg", "--files", "--hidden", "--glob", "!**/.git/*", "--glob", "!**/build/*", "--glob", "!**/.cache/*", "--glob", "!**/.nvim/*" },
+        },
+    },
+})
+-- }}}
+
+
+-- Harpoon 2 {{{
+local harpoon = require("harpoon")
+harpoon:setup({
+    settings = {
+        save_on_toggle = true,
+        sync_on_ui_close = true,
+    },
+})
+-- }}}
+
+
+-- Neoscroll {{{
+if _G.neoscroll_enabled then
+    require('neoscroll').setup({
+        mappings = {},  -- Disable default mappings, we'll set our own
+        hide_cursor = true,
+        stop_eof = true,
+        respect_scrolloff = false,
+        cursor_scrolls_alone = true,
+        easing = 'linear',
+        pre_hook = nil,
+        post_hook = nil,
+        performance_mode = false,
+    })
+
+    -- Custom PageUp/PageDown with 300ms animation
+    local neoscroll = require('neoscroll')
+    map({'n', 'v', 'x'}, '<PageUp>', function() neoscroll.scroll(-vim.api.nvim_win_get_height(0), {move_cursor=true, duration=200}) end, 'Scroll page up')
+    map({'n', 'v', 'x'}, '<PageDown>', function() neoscroll.scroll(vim.api.nvim_win_get_height(0), {move_cursor=true, duration=200}) end, 'Scroll page down')
+    map({'n', 'v', 'x'}, '<C-b>', function() neoscroll.scroll(-vim.api.nvim_win_get_height(0), {move_cursor=true, duration=200}) end, 'Scroll back full page')
+    map({'n', 'v', 'x'}, '<C-f>', function() neoscroll.scroll(vim.api.nvim_win_get_height(0), {move_cursor=true, duration=200}) end, 'Scroll forward full page')
+    map({'n', 'v', 'x'}, '<C-u>', function() neoscroll.scroll(-vim.wo.scroll, {move_cursor=true, duration=200}) end, 'Scroll up half page')
+    map({'n', 'v', 'x'}, '<C-d>', function() neoscroll.scroll(vim.wo.scroll, {move_cursor=true, duration=200}) end, 'Scroll down half page')
+end
+-- }}}
+
+
+
+-- Satellite (scrollbar with annotations) {{{
+if _G.satellite_enabled then
+    require('satellite').setup({
+        current_only = false,
+        winblend = 50,
+        zindex = 40,
+        excluded_filetypes = {'neo-tree', 'TelescopePrompt'},
+        width = 2,
+        handlers = {
+            cursor = {
+                enable = true,
+                symbols = { '⎺', '⎻', '⎼', '⎽' }
+            },
+            diagnostic = {
+                enable = true,
+                signs = {'-', '=', '≡'},
+                min_severity = vim.diagnostic.severity.HINT,
+            },
+            gitsigns = {
+                enable = true,
+                signs = {
+                    add = '│',
+                    change = '│',
+                    delete = '-',
+                }
+            },
+            marks = {
+                enable = true,
+                show_builtins = false,
+                key = 'm'
+            },
+            quickfix = {
+                enable = true,
+                signs = {'━', '━', '━'},
+            }
+        },
+    })
+end
 -- }}}
 
 
@@ -2254,12 +2569,12 @@ map('n', '<leader>Y', '<CMD>Yazi cwd<CR>', 'Yazi (cwd)')
 -- }}}
 
 -- Marks {{{
-map_group('<leader>h', 'Marks')
-map('n', '<leader>h1', "m1", 'Set mark 1')
-map('n', '<leader>h2', "m2", 'Set mark 2')
-map('n', '<leader>h3', "m3", 'Set mark 3')
-map('n', '<leader>h4', "m4", 'Set mark 4')
-map('n', '<leader>h5', "m5", 'Set mark 5')
+map_group('<leader>m', 'Marks')
+map('n', '<leader>m1', "m1", 'Set mark 1')
+map('n', '<leader>m2', "m2", 'Set mark 2')
+map('n', '<leader>m3', "m3", 'Set mark 3')
+map('n', '<leader>m4', "m4", 'Set mark 4')
+map('n', '<leader>m5', "m5", 'Set mark 5')
 
 map('n', '<leader>1', "'1", 'Jump to mark 1')
 map('n', '<leader>2', "'2", 'Jump to mark 2')
@@ -2279,25 +2594,58 @@ map('n', 'zK', function()
 end, 'Peek fold')
 -- }}}
 
--- Find {{{
+-- -- Find (Mini-pick) {{{
+-- map_group('<leader>f', 'Find')
+-- map('n', '<leader>ff', '<CMD>Pick files<CR>', 'Files')
+-- map('n', '<leader>fg', '<CMD>Pick grep_live<CR>', 'Grep')
+-- map('n', '<leader>fw', function()
+    -- require('mini.pick').builtin.grep_live({ pattern = vim.fn.expand('<cword>') })
+-- end, 'Word under cursor')
+-- map('n', '<leader>fb', '<CMD>Pick buffers<CR>', 'Buffers')
+-- map('n', '<leader>fo', '<CMD>Pick oldfiles<CR>', 'Recent files')
+-- map('n', '<leader>fl', '<CMD>Pick buf_lines<CR>', 'Lines')
+-- map('n', '<leader>fh', '<CMD>Pick help<CR>', 'Help')
+-- -- }}}
+
+-- Find (Telescope) {{{
 map_group('<leader>f', 'Find')
-map('n', '<leader>ff', '<CMD>Pick files<CR>', 'Files')
-map('n', '<leader>fg', '<CMD>Pick grep_live<CR>', 'Grep')
-map('n', '<leader>fw', function()
-    require('mini.pick').builtin.grep_live({ pattern = vim.fn.expand('<cword>') })
-end, 'Word under cursor')
-map('n', '<leader>fb', '<CMD>Pick buffers<CR>', 'Buffers')
-map('n', '<leader>fo', '<CMD>Pick oldfiles<CR>', 'Recent files')
-map('n', '<leader>fl', '<CMD>Pick buf_lines<CR>', 'Lines')
-map('n', '<leader>fh', '<CMD>Pick help<CR>', 'Help')
+map('n', '<leader>ff', '<cmd>Telescope find_files<CR>', 'Files')
+map('n', '<leader>fg', '<cmd>Telescope live_grep<CR>', 'Grep')
+map('n', '<leader>fw', '<cmd>Telescope grep_string<CR>', 'Word under cursor')
+map('n', '<leader>fb', '<cmd>Telescope buffers<CR>', 'Buffers')
+map('n', '<leader>fo', '<cmd>Telescope oldfiles<CR>', 'Recent files')
+map('n', '<leader>fh', '<cmd>Telescope help_tags<CR>', 'Help')
+map('n', '<leader>fr', '<cmd>Telescope resume<CR>', 'Resume last search')
+map('n', '<leader>fc', '<cmd>Telescope commands<CR>', 'Commands')
+map('n', '<leader>fk', '<cmd>Telescope keymaps<CR>', 'Keymaps')
 -- }}}
 
+-- Harpoon2 {{{
+map_group('<leader>h', 'Harpoon')
+map('n', '<leader>ha', function() harpoon:list():add() end, 'Add file')
+map('n', '<leader>hh', function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, 'Toggle menu')
+map('n', '<leader>h1', function() harpoon:list():select(1) end, 'File 1')
+map('n', '<leader>h2', function() harpoon:list():select(2) end, 'File 2')
+map('n', '<leader>h3', function() harpoon:list():select(3) end, 'File 3')
+map('n', '<leader>h4', function() harpoon:list():select(4) end, 'File 4')
+map('n', '<leader>h5', function() harpoon:list():select(5) end, 'File 5')
+map('n', '<leader>hn', function() harpoon:list():next() end, 'Next file')
+map('n', '<leader>hp', function() harpoon:list():prev() end, 'Prev file')
+
+map('n', '<M-1>', function() harpoon:list():select(1) end, 'Harpoon 1')
+map('n', '<M-2>', function() harpoon:list():select(2) end, 'Harpoon 2')
+map('n', '<M-3>', function() harpoon:list():select(3) end, 'Harpoon 3')
+map('n', '<M-4>', function() harpoon:list():select(4) end, 'Harpoon 4')
+-- }}}
+
+
+
 -- Sessions {{{
-map_group('<leader>s', 'Session')
-map('n', '<leader>sd', ':SessionDelete<CR>', 'Delete')
-map('n', '<leader>sf', ':Autosession search<CR>', 'Find')
-map('n', '<leader>ss', ':mksession! .session.vim<CR>', 'Save')
-map('n', '<leader>sl', ':source .session.vim<CR>', 'Load')
+--map_group('<leader>s', 'Session')
+--map('n', '<leader>sd', ':SessionDelete<CR>', 'Delete')
+--map('n', '<leader>sf', ':Autosession search<CR>', 'Find')
+--map('n', '<leader>ss', ':mksession! .session.vim<CR>', 'Save')
+--map('n', '<leader>sl', ':source .session.vim<CR>', 'Load')
 -- }}}
 
 -- C++ {{{
@@ -2370,7 +2718,7 @@ map('n', '<leader>bt', function()
     vim.cmd('!ctest --test-dir ' .. vim.fn.shellescape(build_dir))
 end, 'Run tests')
 
-map('n', '<leader>m', ':make<CR>', 'Make')
+--map('n', '<leader>m', ':make<CR>', 'Make')
 map('n', '<leader>cs', function()
     _G.last_cmake_target = nil
     print("Target cache cleared.")
