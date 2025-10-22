@@ -1376,7 +1376,7 @@ function _G.show_settings_window()
         if state.view == "main" then
             for i, item in ipairs(menus.main) do
                 lines[#lines+1] = (i == state.selection) 
-                    and string.format("> %s %s - %s", item[1], item[2], item[3])
+                    and string.format("► %s %s - %s", item[1], item[2], item[3])
                     or string.format("  %s %s", item[1], item[2])
             end
         elseif state.view == "colorscheme" then
