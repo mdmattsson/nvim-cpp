@@ -293,6 +293,235 @@ end
 
 -- }}}
 
+
+
+-- ============================================================================
+-- AI CODING COMPANION CONFIGURATION {{{
+-- ============================================================================
+
+-- Default AI provider setting
+_G.ai_companion = {
+    enabled = true,
+    provider = "claude",  -- Options: "claude", "openai", "copilot", "gemini", "ollama"
+    auto_suggestions = true,
+    dual_boost = false,
+    use_avante = true,  -- Set to false to skip avante.nvim entirely
+    api_keys = {
+        anthropic = "",
+        openai = "",
+        gemini = "",
+    },
+    ollama = {
+        enabled = false,
+        endpoint = "http://127.0.0.1:11434",
+        model = "codellama",  -- Default model
+    },
+    copilot = {
+        enabled = false,
+        authenticated = false,
+    },
+}
+
+-- Load AI companion settings from file if exists
+function _G.load_ai_companion_settings()
+    local config_path = vim.fn.stdpath('data') .. '/ai_companion_settings.json'
+    if vim.fn.filereadable(config_path) == 1 then
+        local file = io.open(config_path, 'r')
+        if file then
+            local content = file:read('*all')
+            file:close()
+            local ok, settings = pcall(vim.json.decode, content)
+            if ok and settings then
+                _G.ai_companion = vim.tbl_deep_extend('force', _G.ai_companion, settings)
+            end
+        end
+    end
+end
+
+-- Save AI companion settings to file
+function _G.save_ai_companion_settings()
+    local config_path = vim.fn.stdpath('data') .. '/ai_companion_settings.json'
+    local file = io.open(config_path, 'w')
+    if file then
+        file:write(vim.json.encode(_G.ai_companion))
+        file:close()
+    end
+end
+
+-- Apply API keys to environment variables
+function _G.apply_api_keys()
+    if _G.ai_companion.api_keys.anthropic ~= "" then
+        vim.env.ANTHROPIC_API_KEY = _G.ai_companion.api_keys.anthropic
+    end
+    if _G.ai_companion.api_keys.openai ~= "" then
+        vim.env.OPENAI_API_KEY = _G.ai_companion.api_keys.openai
+    end
+    if _G.ai_companion.api_keys.gemini ~= "" then
+        vim.env.GEMINI_API_KEY = _G.ai_companion.api_keys.gemini
+    end
+end
+
+-- Function to set API key for a provider
+function _G.set_api_key(provider)
+    local key_map = {
+        claude = "anthropic",
+        openai = "openai",
+        gemini = "gemini",
+    }
+    
+    local key_name = key_map[provider]
+    if not key_name then
+        vim.notify("Copilot uses GitHub CLI authentication (gh auth login)", vim.log.levels.INFO)
+        return
+    end
+    
+    local current_key = _G.ai_companion.api_keys[key_name]
+    local display_key = current_key ~= "" and (current_key:sub(1, 10) .. "..." .. current_key:sub(-4)) or "not set"
+    
+    vim.ui.input({
+        prompt = provider:upper() .. " API Key (current: " .. display_key .. ", empty to clear): ",
+        default = "",
+    }, function(input)
+        if input ~= nil then  -- User didn't cancel
+            _G.ai_companion.api_keys[key_name] = input  -- Empty string clears it
+            save_ai_companion_settings()
+            apply_api_keys()
+            if input == "" then
+                vim.notify("API key cleared for " .. provider, vim.log.levels.INFO)
+            else
+                vim.notify("API key saved for " .. provider, vim.log.levels.INFO)
+            end
+        end
+    end)
+end
+
+-- Function to clear API key for a provider
+function _G.clear_api_key(provider)
+    local key_map = {
+        claude = "anthropic",
+        openai = "openai",
+        gemini = "gemini",
+    }
+    
+    local key_name = key_map[provider]
+    if not key_name then
+        return
+    end
+    
+    _G.ai_companion.api_keys[key_name] = ""
+    save_ai_companion_settings()
+    apply_api_keys()
+    vim.notify("API key cleared for " .. provider, vim.log.levels.INFO)
+end
+
+-- Function to configure Ollama endpoint
+function _G.configure_ollama_endpoint()
+    local current = _G.ai_companion.ollama.endpoint
+    vim.ui.input({
+        prompt = "Ollama endpoint (current: " .. current .. "): ",
+        default = current,
+    }, function(input)
+        if input and input ~= "" then
+            _G.ai_companion.ollama.endpoint = input
+            save_ai_companion_settings()
+            vim.notify("Ollama endpoint set to: " .. input, vim.log.levels.INFO)
+        end
+    end)
+end
+
+-- Function to set Ollama model
+function _G.set_ollama_model()
+    local current = _G.ai_companion.ollama.model
+    local common_models = {
+        "codellama",
+        "llama2",
+        "mistral",
+        "deepseek-coder",
+        "phi",
+        "qwen",
+        "custom"
+    }
+    
+    vim.ui.select(common_models, {
+        prompt = "Select Ollama model (current: " .. current .. "): ",
+    }, function(choice)
+        if choice then
+            if choice == "custom" then
+                vim.ui.input({
+                    prompt = "Enter custom model name: ",
+                    default = current,
+                }, function(input)
+                    if input and input ~= "" then
+                        _G.ai_companion.ollama.model = input
+                        save_ai_companion_settings()
+                        vim.notify("Ollama model set to: " .. input, vim.log.levels.INFO)
+                    end
+                end)
+            else
+                _G.ai_companion.ollama.model = choice
+                save_ai_companion_settings()
+                vim.notify("Ollama model set to: " .. choice, vim.log.levels.INFO)
+            end
+        end
+    end)
+end
+
+-- Function to toggle Ollama
+function _G.toggle_ollama()
+    _G.ai_companion.ollama.enabled = not _G.ai_companion.ollama.enabled
+    save_ai_companion_settings()
+    
+    if _G.ai_companion.ollama.enabled then
+        vim.notify("Ollama enabled", vim.log.levels.INFO)
+    else
+        vim.notify("Ollama disabled", vim.log.levels.WARN)
+    end
+end
+
+-- Function to test Ollama connection
+function _G.test_ollama_connection()
+    local endpoint = _G.ai_companion.ollama.endpoint
+    vim.notify("Testing connection to " .. endpoint .. "...", vim.log.levels.INFO)
+    
+    local cmd = string.format('curl -s -o /dev/null -w "%%{http_code}" %s/api/tags', endpoint)
+    local handle = io.popen(cmd)
+    local result = handle:read("*a")
+    handle:close()
+    
+    if result:match("200") then
+        vim.notify("✓ Ollama is running and accessible!", vim.log.levels.INFO)
+    else
+        vim.notify("✗ Cannot connect to Ollama. Is it running?", vim.log.levels.ERROR)
+        vim.notify("Start with: ollama serve", vim.log.levels.INFO)
+    end
+end
+
+-- Function to setup Copilot authentication
+function _G.setup_copilot()
+    vim.notify("Setting up GitHub Copilot...", vim.log.levels.INFO)
+    vim.notify("Run: gh auth login", vim.log.levels.INFO)
+    vim.cmd("Copilot setup")
+end
+
+-- Function to check Copilot status
+function _G.check_copilot_status()
+    local has_copilot, copilot = pcall(require, 'copilot')
+    if has_copilot then
+        vim.notify("Copilot plugin loaded", vim.log.levels.INFO)
+        vim.cmd("Copilot status")
+    else
+        vim.notify("Copilot plugin not found", vim.log.levels.WARN)
+    end
+end
+
+-- Load settings on startup and apply API keys
+load_ai_companion_settings()
+apply_api_keys()
+
+-- }}
+
+
+
 -- ============================================================================
 -- UNIFIED KEYMAP SYSTEM {{{
 -- ============================================================================
@@ -490,6 +719,11 @@ vim.pack.add({
     { src = 'https://github.com/karb94/neoscroll.nvim' },
     { src = 'https://github.com/lewis6991/satellite.nvim' },
     
+    -- AI Coding Companion
+    { src = 'https://github.com/yetone/avante.nvim' },
+    { src = 'https://github.com/stevearc/dressing.nvim' },
+    { src = 'https://github.com/MeanderingProgrammer/render-markdown.nvim' },
+    
     -- Conditionally load Mason
     _G.mason_enabled and { src = 'https://github.com/williamboman/mason.nvim'} or nil,
     _G.mason_enabled and { src = 'https://github.com/williamboman/mason-lspconfig.nvim'} or nil,
@@ -509,6 +743,120 @@ do
             vim.fn.system('cd ' .. harpoon_path .. ' && git checkout harpoon2 2>&1')
             if vim.v.shell_error == 0 then
                 print("Harpoon: switched to harpoon2 branch")
+            end
+        end
+    end
+end
+
+-- Workaround: Download avante.nvim pre-built binaries if not already installed
+do
+    -- Check if user wants avante (can be disabled if they don't want to download binaries)
+    if _G.ai_companion.use_avante then
+        local avante_path = vim.fn.stdpath('data') .. '/site/pack/core/opt/avante.nvim'
+        local build_dir = avante_path .. '/build'
+        
+        -- Check for either .so (Linux) or .dylib (macOS) files in build directory
+        local function has_library_files()
+            if vim.fn.isdirectory(build_dir) == 0 then
+                return false
+            end
+            
+            -- Check for shared library files
+            local so_files = vim.fn.glob(build_dir .. '/*.so', false, true)
+            local dylib_files = vim.fn.glob(build_dir .. '/*.dylib', false, true)
+            
+            return #so_files > 0 or #dylib_files > 0
+        end
+        
+        -- Check if avante is installed but not built
+        if vim.fn.isdirectory(avante_path) == 1 and not has_library_files() then
+            vim.notify("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", vim.log.levels.INFO)
+            vim.notify("📦 Downloading avante.nvim pre-built binaries...", vim.log.levels.INFO)
+            vim.notify("This is a one-time setup (takes ~30 seconds)", vim.log.levels.INFO)
+            vim.notify("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", vim.log.levels.INFO)
+            
+            -- Detect system architecture
+            local system = vim.loop.os_uname().sysname
+            local machine = vim.loop.os_uname().machine
+            
+            -- Map to GitHub release asset names (v0.0.27+ format)
+            local platform_map = {
+                ["Linux-x86_64"] = "avante_lib-linux-x86_64-lua51.tar.gz",
+                ["Linux-aarch64"] = "avante_lib-linux-aarch64-lua51.tar.gz",
+                ["Darwin-x86_64"] = "avante_lib-darwin-x86_64-lua51.tar.gz",
+                ["Darwin-arm64"] = "avante_lib-darwin-aarch64-lua51.tar.gz",
+            }
+            
+            local platform_key = system .. "-" .. machine
+            local asset_name = platform_map[platform_key]
+            
+            if not asset_name then
+                vim.notify("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", vim.log.levels.WARN)
+                vim.notify("⚠️  No pre-built binary for: " .. platform_key, vim.log.levels.WARN)
+                vim.notify("", vim.log.levels.WARN)
+                vim.notify("Supported platforms:", vim.log.levels.INFO)
+                vim.notify("  • Linux x86_64", vim.log.levels.INFO)
+                vim.notify("  • Linux ARM64", vim.log.levels.INFO)
+                vim.notify("  • macOS x86_64 (Intel)", vim.log.levels.INFO)
+                vim.notify("  • macOS ARM64 (Apple Silicon)", vim.log.levels.INFO)
+                vim.notify("", vim.log.levels.INFO)
+                vim.notify("Option 1: Build from source with Rust", vim.log.levels.INFO)
+                vim.notify("  See RUST_INSTALL_GUIDE.md", vim.log.levels.INFO)
+                vim.notify("", vim.log.levels.INFO)
+                vim.notify("Option 2: Disable avante.nvim", vim.log.levels.INFO)
+                vim.notify("  <Space>s → AI Companion → Use Avante.nvim [✗]", vim.log.levels.INFO)
+                vim.notify("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", vim.log.levels.WARN)
+            else
+                -- Download and extract pre-built binary
+                local download_url = "https://github.com/yetone/avante.nvim/releases/download/v0.0.27/" .. asset_name
+                local temp_file = vim.fn.tempname() .. ".tar.gz"
+                
+                -- Create build directory
+                vim.fn.mkdir(build_dir, "p")
+                
+                -- Download binary
+                vim.notify("Downloading: " .. asset_name, vim.log.levels.INFO)
+                local download_cmd = string.format('curl -L -o "%s" "%s" 2>&1', temp_file, download_url)
+                local download_result = vim.fn.system(download_cmd)
+                
+                if vim.v.shell_error ~= 0 then
+                    vim.notify("❌ Download failed. Check your internet connection.", vim.log.levels.ERROR)
+                    vim.notify("Details: " .. download_result, vim.log.levels.ERROR)
+                    vim.notify("Manual install: See AVANTE_BINARY_INSTALL.md", vim.log.levels.INFO)
+                else
+                    -- Extract binary
+                    vim.notify("Extracting binaries...", vim.log.levels.INFO)
+                    local extract_cmd = string.format('tar -xzf "%s" -C "%s" 2>&1', temp_file, build_dir)
+                    local extract_result = vim.fn.system(extract_cmd)
+                    
+                    if vim.v.shell_error ~= 0 then
+                        vim.notify("❌ Extraction failed.", vim.log.levels.ERROR)
+                        vim.notify("Details: " .. extract_result, vim.log.levels.ERROR)
+                    else
+                        -- Clean up temp file
+                        vim.fn.delete(temp_file)
+                        
+                        -- Verify installation by checking for library files
+                        if has_library_files() then
+                            vim.notify("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", vim.log.levels.INFO)
+                            vim.notify("✅ Avante.nvim installed successfully!", vim.log.levels.INFO)
+                            vim.notify("Restart Neovim to activate AI features", vim.log.levels.INFO)
+                            vim.notify("", vim.log.levels.INFO)
+                            vim.notify("Quick start:", vim.log.levels.INFO)
+                            vim.notify("  <Space>at  → Toggle AI panel", vim.log.levels.INFO)
+                            vim.notify("  <Space>aa  → Ask AI question", vim.log.levels.INFO)
+                            vim.notify("  <Space>ac  → AI chat", vim.log.levels.INFO)
+                            vim.notify("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", vim.log.levels.INFO)
+                        else
+                            vim.notify("❌ Installation verification failed.", vim.log.levels.ERROR)
+                            vim.notify("Build directory does not contain expected library files.", vim.log.levels.ERROR)
+                            vim.notify("Expected: .so or .dylib files in " .. build_dir, vim.log.levels.ERROR)
+                            vim.notify("", vim.log.levels.INFO)
+                            vim.notify("Debug: Check what was extracted:", vim.log.levels.INFO)
+                            vim.notify("  ls -la " .. build_dir, vim.log.levels.INFO)
+                        end
+                    end
+                end
             end
         end
     end
@@ -1204,6 +1552,362 @@ vim.cmd("hi statusline guibg=NONE")
 
 
 -- ============================================================================
+-- AI CODING COMPANION - AVANTE.NVIM {{{
+-- ============================================================================
+
+-- Only setup avante if enabled and Rust is available
+if _G.ai_companion.use_avante then
+    -- Defer avante setup to avoid startup prompts
+    vim.defer_fn(function()
+    pcall(function()
+        require('render-markdown').setup({
+            file_types = { "markdown", "Avante" },
+        })
+        
+        require('avante').setup({
+            provider = _G.ai_companion.provider,
+            auto_suggestions_provider = _G.ai_companion.provider,
+            providers = {
+            claude = {
+                endpoint = "https://api.anthropic.com",
+                model = "claude-sonnet-4-5-20250929",
+                extra_request_body = {
+                    temperature = 0,
+                    max_tokens = 8000,
+                },
+            },
+            openai = {
+                endpoint = "https://api.openai.com/v1",
+                model = "gpt-4o",
+                extra_request_body = {
+                    temperature = 0,
+                    max_tokens = 4096,
+                },
+            },
+            copilot = {
+                endpoint = "https://api.githubcopilot.com",
+                model = "gpt-4",
+                extra_request_body = {
+                    temperature = 0,
+                    max_tokens = 4096,
+                },
+            },
+            gemini = {
+                endpoint = "https://generativelanguage.googleapis.com/v1beta/models",
+                model = "gemini-2.0-flash-exp",
+                extra_request_body = {
+                    temperature = 0,
+                    max_tokens = 8000,
+                },
+            },
+            ollama = {
+                endpoint = _G.ai_companion.ollama.endpoint .. "/v1",
+                model = _G.ai_companion.ollama.model,
+                parse_curl_args = function(opts, code_opts)
+                    return {
+                        url = opts.endpoint .. "/chat/completions",
+                        headers = {
+                            ["Content-Type"] = "application/json",
+                        },
+                        body = {
+                            model = opts.model,
+                            messages = opts.messages,
+                            max_tokens = 4096,
+                            stream = true,
+                        },
+                    }
+                end,
+            },
+        },
+        dual_boost = {
+            enabled = _G.ai_companion.dual_boost,
+            first_provider = "openai",
+            second_provider = "claude",
+            prompt = "Based on the two reference outputs below, generate a response that incorporates elements from both but reflects your own judgment and unique perspective.",
+            timeout = 60000,
+        },
+        behaviour = {
+            auto_suggestions = _G.ai_companion.auto_suggestions,
+            auto_set_highlight_group = true,
+            auto_set_keymaps = true,
+            auto_apply_diff_after_generation = false,
+            support_paste_from_clipboard = true,
+            suppress_missing_provider_warnings = true,
+        },
+        mappings = {
+            diff = {
+                ours = "co",
+                theirs = "ct",
+                all_theirs = "ca",
+                both = "cb",
+                cursor = "cc",
+                next = "]x",
+                prev = "[x",
+            },
+            suggestion = {
+                accept = "<M-l>",
+                next = "<M-]>",
+                prev = "<M-[>",
+                dismiss = "<C-]>",
+            },
+            jump = {
+                next = "]]",
+                prev = "[[",
+            },
+            submit = {
+                normal = "<CR>",
+                insert = "<C-s>",
+            },
+            sidebar = {
+                apply_all = "A",
+                apply_cursor = "a",
+                switch_windows = "<Tab>",
+                reverse_switch_windows = "<S-Tab>",
+            },
+        },
+        hints = { enabled = true },
+        windows = {
+            position = "right",
+            wrap = true,
+            width = 30,
+            sidebar_header = {
+                align = "center",
+                rounded = true,
+            },
+        },
+        highlights = {
+            diff = {
+                current = "DiffText",
+                incoming = "DiffAdd",
+            },
+        },
+        diff = {
+            autojump = true,
+            list_opener = "copen",
+        },
+    })
+    
+    -- Setup completion sources for avante
+    local cmp = require('cmp')
+    cmp.setup.filetype('AvanteInput', {
+        sources = cmp.config.sources({
+            { name = 'avante_commands' },
+            { name = 'avante_mentions' },
+            { name = 'avante_files' },
+        }, {
+            { name = 'buffer' },
+        }),
+    })
+end)
+end, 100)  -- Defer by 100ms to avoid startup prompts
+else
+    vim.notify("Avante.nvim disabled. Set use_avante=true in settings or install Rust to enable.", vim.log.levels.INFO)
+end
+
+-- Function to toggle AI companion
+function _G.toggle_ai_companion()
+    _G.ai_companion.enabled = not _G.ai_companion.enabled
+    save_ai_companion_settings()
+    
+    if _G.ai_companion.enabled then
+        vim.notify("AI Companion enabled", vim.log.levels.INFO)
+    else
+        vim.notify("AI Companion disabled", vim.log.levels.WARN)
+        vim.cmd("AvanteToggle")
+    end
+end
+
+-- Function to switch AI provider
+function _G.switch_ai_provider(provider)
+    local valid_providers = {"claude", "openai", "copilot", "gemini", "ollama"}
+    if not vim.tbl_contains(valid_providers, provider) then
+        vim.notify("Invalid provider: " .. provider, vim.log.levels.ERROR)
+        return
+    end
+    
+    _G.ai_companion.provider = provider
+    save_ai_companion_settings()
+    
+    -- Update avante configuration
+    pcall(function()
+        require('avante.config').override({
+            provider = provider,
+            auto_suggestions_provider = provider,
+        })
+    end)
+    
+    vim.notify("AI provider switched to: " .. provider:upper(), vim.log.levels.INFO)
+end
+
+-- Function to toggle auto suggestions
+function _G.toggle_auto_suggestions()
+    _G.ai_companion.auto_suggestions = not _G.ai_companion.auto_suggestions
+    save_ai_companion_settings()
+    
+    pcall(function()
+        require('avante.config').override({
+            behaviour = {
+                auto_suggestions = _G.ai_companion.auto_suggestions,
+            },
+        })
+    end)
+    
+    if _G.ai_companion.auto_suggestions then
+        vim.notify("Auto suggestions enabled", vim.log.levels.INFO)
+    else
+        vim.notify("Auto suggestions disabled", vim.log.levels.WARN)
+    end
+end
+
+-- Function to toggle dual boost
+function _G.toggle_dual_boost()
+    _G.ai_companion.dual_boost = not _G.ai_companion.dual_boost
+    save_ai_companion_settings()
+    
+    pcall(function()
+        require('avante.config').override({
+            dual_boost = {
+                enabled = _G.ai_companion.dual_boost,
+            },
+        })
+    end)
+    
+    if _G.ai_companion.dual_boost then
+        vim.notify("Dual boost enabled (uses 2 providers)", vim.log.levels.INFO)
+    else
+        vim.notify("Dual boost disabled", vim.log.levels.WARN)
+    end
+end
+
+-- }}}
+
+
+-- ============================================================================
+-- NEO-TREE AND AVANTE INTEGRATION {{{
+-- ============================================================================
+
+-- Configure Neo-tree with Avante file selection support
+pcall(function()
+    require('neo-tree').setup({
+        close_if_last_window = false,
+        popup_border_style = "rounded",
+        enable_git_status = true,
+        enable_diagnostics = true,
+        filesystem = {
+            commands = {
+                -- Add files to Avante context from Neo-tree
+                avante_add_files = function(state)
+                    local node = state.tree:get_node()
+                    local filepath = node:get_id()
+                    
+                    -- Get relative path
+                    local relative_path = vim.fn.fnamemodify(filepath, ':.')
+                    
+                    -- Try to use avante's utility if available
+                    pcall(function()
+                        relative_path = require('avante.utils').relative_path(filepath)
+                    end)
+                    
+                    -- Get or create avante sidebar
+                    local has_avante, avante = pcall(require, 'avante')
+                    if not has_avante then
+                        vim.notify("Avante not available. Enable use_avante in settings.", vim.log.levels.WARN)
+                        return
+                    end
+                    
+                    local sidebar = avante.get()
+                    local was_open = sidebar and sidebar:is_open()
+                    
+                    -- Open avante if not already open
+                    if not was_open then
+                        local api_ok, api = pcall(require, 'avante.api')
+                        if api_ok then
+                            api.ask()
+                            sidebar = avante.get()
+                        else
+                            vim.notify("Could not open Avante sidebar", vim.log.levels.ERROR)
+                            return
+                        end
+                    end
+                    
+                    -- Add file to selector
+                    if sidebar and sidebar.file_selector then
+                        sidebar.file_selector:add_selected_file(relative_path)
+                        vim.notify("Added to Avante: " .. relative_path, vim.log.levels.INFO)
+                        
+                        -- Clean up neo-tree buffer from selector if we just opened avante
+                        if not was_open then
+                            pcall(function()
+                                sidebar.file_selector:remove_selected_file('neo-tree filesystem [1]')
+                            end)
+                        end
+                    end
+                end,
+            },
+            window = {
+                position = "left",
+                width = 30,
+                mappings = {
+                    ['oa'] = 'avante_add_files',  -- Press 'oa' in Neo-tree to add file to Avante
+                    ['<space>'] = 'toggle_node',
+                    ['<cr>'] = 'open',
+                    ['<esc>'] = 'cancel',
+                    ['P'] = { 'toggle_preview', config = { use_float = true } },
+                    ['l'] = 'focus_preview',
+                    ['S'] = 'open_split',
+                    ['s'] = 'open_vsplit',
+                    ['t'] = 'open_tabnew',
+                    ['C'] = 'close_node',
+                    ['z'] = 'close_all_nodes',
+                    ['a'] = {
+                        'add',
+                        config = {
+                            show_path = 'none',
+                        },
+                    },
+                    ['A'] = 'add_directory',
+                    ['d'] = 'delete',
+                    ['r'] = 'rename',
+                    ['y'] = 'copy_to_clipboard',
+                    ['x'] = 'cut_to_clipboard',
+                    ['p'] = 'paste_from_clipboard',
+                    ['c'] = 'copy',
+                    ['m'] = 'move',
+                    ['q'] = 'close_window',
+                    ['R'] = 'refresh',
+                    ['?'] = 'show_help',
+                    ['<'] = 'prev_source',
+                    ['>'] = 'next_source',
+                    ['i'] = 'show_file_details',
+                },
+            },
+            filtered_items = {
+                visible = false,
+                hide_dotfiles = false,
+                hide_gitignored = false,
+            },
+            follow_current_file = {
+                enabled = true,
+            },
+            use_libuv_file_watcher = true,
+        },
+        buffers = {
+            follow_current_file = {
+                enabled = true,
+            },
+        },
+        git_status = {
+            window = {
+                position = "float",
+            },
+        },
+    })
+end)
+
+-- }}}
+
+
+-- ============================================================================
 -- SETTINGS WINDOW {{{
 -- ============================================================================
 
@@ -1313,6 +2017,7 @@ function _G.show_settings_window()
         main = {
             {"🎨", "Colorscheme", "Change editor colorscheme", function() state.view, state.selection = "colorscheme", 1; for i, s in ipairs(vim.fn.getcompletion('', 'color')) do if s == state.saved_cs then state.selection = i break end end end},
             {"🔧", "LSP Servers", "Toggle language servers on/off", function() state.view, state.selection = "lsp", 1 end},
+            {"🤖", "AI Companion", "Configure AI coding assistant", function() state.view, state.selection = "ai", 1 end},
             {"🖥", "Display Settings", "Line numbers, signs, wrapping, etc.", function() state.view, state.selection = "display", 1 end},
             {"✏ ", "Editor Behavior", "Tabs, scrolling, mouse, clipboard, formatting", function() state.view, state.selection = "editor", 1 end},
             {"🌿", "Git Integration", "Git signs and blame settings", function() state.view, state.selection = "git", 1 end},
@@ -1351,6 +2056,55 @@ function _G.show_settings_window()
             {"Underline Diagnostics", function() return vim.diagnostic.config().underline and "[✓]" or "[ ]" end, function() vim.diagnostic.config({underline = not vim.diagnostic.config().underline}) end},
             {"Update in Insert", function() return vim.diagnostic.config().update_in_insert and "[✓]" or "[ ]" end, function() vim.diagnostic.config({update_in_insert = not vim.diagnostic.config().update_in_insert}) end},
         },
+        ai = {
+            {"AI Companion", function() return _G.ai_companion.enabled and "[✓]" or "[ ]" end, function() toggle_ai_companion() end},
+            {"Current Provider", function() return _G.ai_companion.provider:upper() end, function() local providers = {"claude", "openai", "copilot", "gemini", "ollama"}; local current_idx = 1; for i, p in ipairs(providers) do if p == _G.ai_companion.provider then current_idx = i break end end; local next_idx = (current_idx % #providers) + 1; switch_ai_provider(providers[next_idx]) end},
+            {"Auto Suggestions", function() return _G.ai_companion.auto_suggestions and "[✓]" or "[ ]" end, function() toggle_auto_suggestions() end},
+            {"Dual Boost Mode", function() return _G.ai_companion.dual_boost and "[✓]" or "[ ]" end, function() toggle_dual_boost() end},
+            {"Use Avante.nvim", function() return _G.ai_companion.use_avante and "[✓] (needs Rust)" or "[ ] (Copilot only)" end, function() _G.ai_companion.use_avante = not _G.ai_companion.use_avante; save_ai_companion_settings(); vim.notify("Use Avante: " .. (_G.ai_companion.use_avante and "ON (restart required)" or "OFF"), vim.log.levels.INFO) end},
+            {separator = true},
+            {"Claude API Key", function() 
+                local key = _G.ai_companion.api_keys.anthropic
+                if key == "" then
+                    return vim.env.ANTHROPIC_API_KEY and "[env]" or "[not set]"
+                else
+                    return "[" .. key:sub(1, 7) .. "...]"
+                end
+            end, function() set_api_key("claude") end},
+            {"OpenAI API Key", function() 
+                local key = _G.ai_companion.api_keys.openai
+                if key == "" then
+                    return vim.env.OPENAI_API_KEY and "[env]" or "[not set]"
+                else
+                    return "[" .. key:sub(1, 7) .. "...]"
+                end
+            end, function() set_api_key("openai") end},
+            {"Gemini API Key", function() 
+                local key = _G.ai_companion.api_keys.gemini
+                if key == "" then
+                    return vim.env.GEMINI_API_KEY and "[env]" or "[not set]"
+                else
+                    return "[" .. key:sub(1, 7) .. "...]"
+                end
+            end, function() set_api_key("gemini") end},
+            {separator = true},
+            {"Ollama Enabled", function() return _G.ai_companion.ollama.enabled and "[✓]" or "[ ]" end, function() toggle_ollama() end},
+            {"Ollama Model", function() return "[" .. _G.ai_companion.ollama.model .. "]" end, function() set_ollama_model() end},
+            {"Ollama Endpoint", function() return "[" .. _G.ai_companion.ollama.endpoint .. "]" end, function() configure_ollama_endpoint() end},
+            {"Test Ollama", function() return "" end, function() test_ollama_connection() end},
+            {separator = true},
+            {"Setup Copilot", function() return "" end, function() setup_copilot() end},
+            {"Check Copilot Status", function() return "" end, function() check_copilot_status() end},
+            {separator = true},
+            {"Clear All API Keys", function() return "" end, function()
+                _G.ai_companion.api_keys.anthropic = ""
+                _G.ai_companion.api_keys.openai = ""
+                _G.ai_companion.api_keys.gemini = ""
+                save_ai_companion_settings()
+                vim.notify("All API keys cleared", vim.log.levels.INFO)
+            end},
+            {"Toggle AI Panel", function() return "" end, function() vim.cmd("AvanteToggle") end},
+        },
     }
     
     -- View metadata
@@ -1358,6 +2112,7 @@ function _G.show_settings_window()
         main = {title = ' ⚙  Settings ', footer = ' j/k=Navigate | Enter/Space=Select | q/Esc=Close '},
         colorscheme = {title = ' 🎨 Colorschemes ', footer = ' j/k=Navigate | Enter=Apply & Save | Esc=Cancel | q=Back '},
         lsp = {title = ' 🔧 LSP Servers ', footer = ' j/k=Navigate | Space/Enter=Toggle | r=Restart | q=Back '},
+        ai = {title = ' 🤖 AI Companion ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
         display = {title = ' 🖥  Display Settings ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
         editor = {title = ' ✏  Editor Behavior ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
         git = {title = ' 🌿 Git Integration ', footer = ' j/k=Navigate | Space/Enter=Toggle | q=Back '},
@@ -1374,10 +2129,24 @@ function _G.show_settings_window()
         local info = view_info[state.view]
         
         if state.view == "main" then
+            -- Calculate max label width for main menu
+            local max_label_width = 0
             for i, item in ipairs(menus.main) do
-                lines[#lines+1] = (i == state.selection) 
-                    and string.format("► %s %s - %s", item[1], item[2], item[3])
-                    or string.format("  %s %s", item[1], item[2])
+                local label_len = #item[1] + #item[2] + 1  -- emoji + space + text
+                if label_len > max_label_width then
+                    max_label_width = label_len
+                end
+            end
+            
+            for i, item in ipairs(menus.main) do
+                local label = item[1] .. " " .. item[2]
+                local desc = item[3]
+                if i == state.selection then
+                    local padding = max_label_width - #label + 20
+                    lines[#lines+1] = string.format("► %s%s - %s", label, string.rep(" ", padding), desc)
+                else
+                    lines[#lines+1] = string.format("  %s", label)
+                end
             end
         elseif state.view == "colorscheme" then
             local schemes = vim.fn.getcompletion('', 'color')
@@ -1402,22 +2171,49 @@ function _G.show_settings_window()
                 end
             end
         elseif state.view == "lsp" then
+            -- Calculate max label width for LSP view
+            local max_label_width = 0
+            for i, lsp in ipairs(state.lsp_configs) do
+                if #lsp.name > max_label_width then
+                    max_label_width = #lsp.name
+                end
+            end
+            
             for i, lsp in ipairs(state.lsp_configs) do
                 local status = state.enabled_lsps[lsp.name] and "[✓]" or "[ ]"
                 local avail = vim.fn.executable(lsp.cmd[1]) == 1 and "" or " (not installed)"
-                lines[#lines+1] = (i == state.selection and "> " or "  ") .. status .. " " .. lsp.name .. avail
+                local padding = max_label_width - #lsp.name + 20  -- Add 20 extra chars
+                lines[#lines+1] = (i == state.selection and "> " or "  ") .. lsp.name .. string.rep(" ", padding) .. " " .. status .. avail
             end
         else
-            -- Generic menu rendering for display/editor/git/diagnostics
+            -- Generic menu rendering for display/editor/git/diagnostics/ai
             local menu = menus[state.view]
             local item_idx = 0
+            
+            -- Calculate max label width for right-justification
+            local max_label_width = 0
+            for i, item in ipairs(menu) do
+                if not item.separator then
+                    local label = item[1]
+                    if #label > max_label_width then
+                        max_label_width = #label
+                    end
+                end
+            end
+            
             for i, item in ipairs(menu) do
                 if item.separator then
                     lines[#lines+1] = ""
                 else
                     item_idx = item_idx + 1
-                    local desc = type(item[2]) == "function" and item[2]() or item[2]
-                    lines[#lines+1] = (item_idx == state.selection and "> " or "  ") .. desc .. " " .. item[1]
+                    local label = item[1]
+                    local status = type(item[2]) == "function" and item[2]() or item[2]
+                    
+                    -- Right-justify status by padding label with extra spacing
+                    local padding = max_label_width - #label + 20  -- Add 20 extra chars
+                    local padded_label = label .. string.rep(" ", padding)
+                    
+                    lines[#lines+1] = (item_idx == state.selection and "> " or "  ") .. padded_label .. " " .. status
                 end
             end
         end
@@ -1456,11 +2252,12 @@ function _G.show_settings_window()
             
             -- Cursor is at: selection - start_idx + 2 (for empty first line and 1-indexed)
             cursor_line = state.selection - start_idx + 2
-        elseif state.view == "editor" then
-            -- For editor view, count separators before current selection
+        elseif state.view == "editor" or state.view == "ai" or state.view == "display" then
+            -- For views with separators, count them before current selection
+            local menu = menus[state.view]
             local item_count = 0
             cursor_line = 1  -- Start at line 1 (empty first line)
-            for i, item in ipairs(menus.editor) do
+            for i, item in ipairs(menu) do
                 if item.separator then
                     cursor_line = cursor_line + 1
                 else
@@ -2546,6 +3343,32 @@ map('n', '<leader>lF', function()
 end, 'Toggle auto-format')
 -- }}}
 
+-- AI Companion {{{
+map_group('<leader>a', 'AI Companion')
+map('n', '<leader>aa', ':AvanteAsk<CR>', 'Ask AI')
+map('v', '<leader>aa', ':AvanteAsk<CR>', 'Ask AI (selection)')
+map('n', '<leader>ac', ':AvanteChat<CR>', 'AI Chat')
+map('n', '<leader>ae', ':AvanteEdit<CR>', 'Edit with AI')
+map('v', '<leader>ae', ':AvanteEdit<CR>', 'Edit with AI (selection)')
+map('n', '<leader>at', ':AvanteToggle<CR>', 'Toggle AI panel')
+map('n', '<leader>ar', ':AvanteRefresh<CR>', 'Refresh AI')
+map('n', '<leader>af', ':AvanteFocus<CR>', 'Focus AI panel')
+map('n', '<leader>as', _G.toggle_auto_suggestions, 'Toggle auto suggestions')
+map('n', '<leader>ap', function()
+    local providers = {"claude", "openai", "copilot", "gemini"}
+    vim.ui.select(providers, {
+        prompt = 'Select AI Provider:',
+        format_item = function(item)
+            return item:upper() .. (_G.ai_companion.provider == item and " (current)" or "")
+        end,
+    }, function(choice)
+        if choice then
+            switch_ai_provider(choice)
+        end
+    end)
+end, 'Switch provider')
+-- }}}
+
 -- Diagnostics {{{
 map_group('<leader>e', 'Errors/Diagnostics')
 map('n', '[d', vim.diagnostic.goto_prev, 'Previous diagnostic')
@@ -2939,4 +3762,4 @@ register_whichkey()
 
 -- ============================================================================
 -- END OF CONFIGURATION
--- ============================================================================
+-- ===========================================================================
